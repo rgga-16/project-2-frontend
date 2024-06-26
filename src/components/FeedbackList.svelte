@@ -19,6 +19,10 @@
     }];
 
     let contexts = [];
+    let selected_image;
+    let image_url = ''; 
+    let image_files;
+    let image_input;
 
 
     let left_panel_tabs = [
@@ -30,6 +34,23 @@
 
     let is_loading=false; 
     let load_status = "";
+
+    async function handleImageUpload(image_files) {
+        let image_file = image_files[0];
+        if(image_file) {
+            if(image_file.type.includes('image')) {
+                let image_url = URL.createObjectURL(image_file);
+                alert("Image uploaded successfully.");
+                return [image_url, image_file];
+            } else {
+                alert("Please select an image file.");
+            }
+        } else {
+            alert("No image selected.");
+        }
+        return null;
+
+    }
 
 
 
@@ -105,7 +126,7 @@
         feedback_list = feedback_list;
     }
 
-    async function sendMessage(inputMessage, contexts=null) {
+    async function sendMessage(inputMessage,  contexts=null, visual_context=null) {
         if(inputMessage.trim() === "") {
             alert("Please enter a message.");
             return;
@@ -126,12 +147,18 @@
         chatbot_messages = chatbot_messages;
         feedback_list = feedback_list;
 
+        let body = {
+            message_history: chatbot_messages, 
+            message: inputMessage,
+            image_url: visual_context
+        };
+
         const response = await fetch("/message_chatbot", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({message_history: chatbot_messages, message: inputMessage})
+            body: JSON.stringify(body)
         });
         if(!response.ok) {
             throw new Error("Failed to send message");
@@ -358,8 +385,8 @@
                     </div>
 
                     <div id="chatbot-actions" class="column padded spaced centered">
-                        <div id="chatbot-utilities" class="row centered spaced">
-                            <div id="contexts" class="column centered bordered">
+                        <div id="chatbot-utilities" class="row centered spaced" >
+                            <div id="contexts" class="column centered bordered" >
                                 <span><strong>Contexts:</strong></span>
                                 {#if contexts.length > 0}
                                     {#each contexts as context}
@@ -369,30 +396,62 @@
                                     <span> None. Add by selecting from the feedback.</span>
                                 {/if}
                             </div>
-                            <div id="suggested-messages" class="row centered bordered">
+                            <div id="suggested-messages" class="column centered bordered">
                                 <span><strong>Suggested messages:</strong></span>
                                 <div class="suggested-message" on:click|preventDefault={
-                                    async () => {
-                                        await sendMessage("Can you explain the following feedback?",contexts=contexts);
-                                    }
-                                } >
+                                        async () => {
+                                            await sendMessage("Can you explain the following feedback?",contexts=contexts, visual_context=image_url);
+                                        }
+                                    } >
                                     Explain feedback.
                                 </div>
                                 <div class="suggested-message" on:click|preventDefault={
-                                    async () => {
-                                        await sendMessage("Can you brainstorm the tasks to do to address the following feedback?",contexts=contexts);
-                                    }
-                                }>
+                                        async () => {
+                                            await sendMessage("Can you brainstorm the tasks to do to address the following feedback?",contexts=contexts, visual_context=image_url);
+                                        }
+                                    }>
                                     Brainstorm actions.
                                 </div>
                             </div>
-                            
+                            <div id="visual-context" class="column centered bordered">
+                                <span><strong>Visual context:</strong></span>
+                                {#if image_url}
+                                    <img src={image_url} alt="Visual context" style="width:100%; height:100%;">
+                                {:else}
+                                    <span> None. Attach an image or screenshot.</span>
+                                {/if}
+                            </div>
                         </div>
                         <div id="chatbot-input" class="row spaced centered" >
+                            <div class="column spaced">
+                                <button class="action-button centered column" on:click|preventDefault={async () => { 
+                                        // Take screenshot.
+                                        // Attach screenshotted image as a context. 
+                                    }}>
+                                    <img src="./logos/screenshot-tile-noroot-svgrepo-com.svg" alt="Screenshot" class="action-icon">
+                                </button>
+                                
+                                <label for="image_upload" style="display: none;"></label>
+                                <input bind:value={image_files} bind:this={image_input} 
+                                    accept="image/png, image/jpeg" type="file" style="display: none;"
+                                    id="image_upload" name="image_upload" 
+                                    on:change = { async () => {
+                                        image_files = image_input.files;
+                                        [image_url,selected_image] = await handleImageUpload(image_files);
+                                    }}
+                                />
+                                <button class="action-button centered column" on:click|preventDefault={async () => { 
+                                        // Add image
+                                        image_input.click();
+                                    }}>
+                                    
+                                    <img src="./logos/image-svgrepo-com.svg" alt="Attach image" class="action-icon">
+                                </button>
+                            </div>
                             
-                            <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage)}"  placeholder="Type your message here..." id="textarea"></textarea>
+                            <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, contexts=contexts, visual_context=image_url)}"  placeholder="Type your message here..." id="textarea"></textarea>
                             <button class="action-button centered column" on:click|preventDefault={async () => { 
-                                    await sendMessage(inputMessage);
+                                    await sendMessage(inputMessage,  contexts=contexts,visual_context=image_url);
                                     inputMessage = "";
                                 }}>
                                 <img src="./logos/send-svgrepo-com.svg" alt="Send" class="action-icon">
@@ -407,93 +466,6 @@
         </div>
 
         
-
-        <!-- <div id="selected-feedback-area" class="bordered spaced column" >
-            {#if selected_feedback}
-                <div class="tab-header" style="overflow-y: hidden; width: 100%; height: 10%;">
-                    {#each detail_tabs as tab, i}
-                        <button class="tab" on:click={()=>{
-                            setActiveDetailTab(i);
-                        }} 
-                        class:active={i===activeDetailTab} class:right-bordered={i<detail_tabs.length-1} >{tab}</button>
-                    {/each}
-                </div>
-                <div class="tab-content " style="width: 100%; height: 90%;">
-                    {#if activeDetailTab===0}
-                        <span style="text-decoration: underline; margin-left: 1rem; margin-top: 1rem;" class=""><strong> Feedback details </strong></span>
-                        <div id="feedback-details" class="column padded" style="overflow-y: auto;">
-                            <p>
-                                <span class="clickable" on:click={() => seekTo(selected_feedback.excerpt_reference.start_timestamp, mediaPlayer)}>[{selected_feedback.excerpt_reference.start_timestamp}]</span> - <span class="clickable" on:click={() => seekTo(selected_feedback.excerpt_reference.end_timestamp, mediaPlayer)}>[{selected_feedback.excerpt_reference.end_timestamp}]</span>
-                                <br>
-                                <span>{@html selected_feedback.excerpt_reference.dialogue}</span> 
-                            </p>
-                        </div>
-                        <div id="feedback-action-buttons" class=" padded row spaced bordered centered" style="border-left:none; border-right:none; border-bottom:none;">
-                            <button class="action-button centered column" on:click={async () => { 
-                                    selected_feedback.positivised_quote = await paraphrasePositively(selected_feedback.quote, selected_feedback.excerpt_reference.dialogue);
-                                    showParaphrasedQuote(selected_feedback, true);
-                                    feedback_list = feedback_list;
-                                }}>
-                                <img src="./logos/ai-positive-paraphrase.png" alt="Paraphrase positively" class="action-icon">
-                                Paraphrase positively
-                            </button>
-                            <button class="action-button" on:click={() => removeFeedback(selected_feedback)}>
-                                <img src="./logos/delete-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
-                                Delete
-                            </button>
-                        </div>  
-                    {:else if activeDetailTab===1}
-                        <div id="chatbot-messages" class="column spaced">
-                            <div class="assistant padded">
-                                <p> <strong> assistant: </strong> Hello! How can I help you today? </p>
-                            </div>
-                            {#each selected_feedback.chatbot_messages as message} 
-                                {#if message.role != "system"}
-                                    <div class="{message.role} padded">
-                                        <p> <strong> {message.role}: </strong> {message.content} </p>
-                                    </div>
-                                {/if}
-                            {/each}
-                            <div style="height: 20px; width: 100%; background-color:white; color:white; cursor: default;"> 
-                                <p>Lorem ipsum dolor sit amet. Eos libero voluptatem sit excepturi rerum vel porro odio est eligendi voluptatibus. At mollitia quam ea dolorum quae aut nemo ipsum est asperiores quibusdam est voluptatem accusamus. Ut eligendi porro quo autem illum non voluptatem rerum et nobis nisi est molestiae facilis quo magni perferendis.
-                                Ea Quis molestiae cum minus consequatur At velit internos et omnis neque qui nihil consequatur et acc</p>
-                            </div> 
-                        </div>
-                        
-                        <div id="chatbot-actions" class="column padded spaced centered">
-                            <div id="suggested-messages" class="row centered spaced">
-                                <div class="suggested-message" on:click|preventDefault={
-                                    async () => {
-                                        await sendMessage("Can you explain the following feedback: \"" + selected_feedback.quote + "\"?");
-                                    }
-                                } >
-                                    Explain feedback.
-                                </div>
-                                <div class="suggested-message" on:click|preventDefault={
-                                    async () => {
-                                        await sendMessage("Can you brainstorm the tasks to do to address the following feedback: \"" + selected_feedback.quote + "\"?");
-                                    }
-                                }>
-                                    Brainstorm actions.
-                                </div>
-                            </div>
-                            <div id="chatbot-input" class="row spaced centered" >
-                                
-                                <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage)}"  placeholder="Type your message here..." id="textarea"></textarea>
-                                <button class="action-button centered column" on:click|preventDefault={async () => { 
-                                        await sendMessage(inputMessage);
-                                        inputMessage = "";
-                                    }}>
-                                    <img src="./logos/send-svgrepo-com.svg" alt="Send" class="action-icon">
-                                </button>
-                            </div>
-                        </div>
-                        
-                    {/if}
-                </div>
-            {/if}
-        </div> -->
-
     </div>
 
 </div>
@@ -736,3 +708,92 @@
     
 
 </style>
+
+
+
+
+        <!-- <div id="selected-feedback-area" class="bordered spaced column" >
+            {#if selected_feedback}
+                <div class="tab-header" style="overflow-y: hidden; width: 100%; height: 10%;">
+                    {#each detail_tabs as tab, i}
+                        <button class="tab" on:click={()=>{
+                            setActiveDetailTab(i);
+                        }} 
+                        class:active={i===activeDetailTab} class:right-bordered={i<detail_tabs.length-1} >{tab}</button>
+                    {/each}
+                </div>
+                <div class="tab-content " style="width: 100%; height: 90%;">
+                    {#if activeDetailTab===0}
+                        <span style="text-decoration: underline; margin-left: 1rem; margin-top: 1rem;" class=""><strong> Feedback details </strong></span>
+                        <div id="feedback-details" class="column padded" style="overflow-y: auto;">
+                            <p>
+                                <span class="clickable" on:click={() => seekTo(selected_feedback.excerpt_reference.start_timestamp, mediaPlayer)}>[{selected_feedback.excerpt_reference.start_timestamp}]</span> - <span class="clickable" on:click={() => seekTo(selected_feedback.excerpt_reference.end_timestamp, mediaPlayer)}>[{selected_feedback.excerpt_reference.end_timestamp}]</span>
+                                <br>
+                                <span>{@html selected_feedback.excerpt_reference.dialogue}</span> 
+                            </p>
+                        </div>
+                        <div id="feedback-action-buttons" class=" padded row spaced bordered centered" style="border-left:none; border-right:none; border-bottom:none;">
+                            <button class="action-button centered column" on:click={async () => { 
+                                    selected_feedback.positivised_quote = await paraphrasePositively(selected_feedback.quote, selected_feedback.excerpt_reference.dialogue);
+                                    showParaphrasedQuote(selected_feedback, true);
+                                    feedback_list = feedback_list;
+                                }}>
+                                <img src="./logos/ai-positive-paraphrase.png" alt="Paraphrase positively" class="action-icon">
+                                Paraphrase positively
+                            </button>
+                            <button class="action-button" on:click={() => removeFeedback(selected_feedback)}>
+                                <img src="./logos/delete-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
+                                Delete
+                            </button>
+                        </div>  
+                    {:else if activeDetailTab===1}
+                        <div id="chatbot-messages" class="column spaced">
+                            <div class="assistant padded">
+                                <p> <strong> assistant: </strong> Hello! How can I help you today? </p>
+                            </div>
+                            {#each selected_feedback.chatbot_messages as message} 
+                                {#if message.role != "system"}
+                                    <div class="{message.role} padded">
+                                        <p> <strong> {message.role}: </strong> {message.content} </p>
+                                    </div>
+                                {/if}
+                            {/each}
+                            <div style="height: 20px; width: 100%; background-color:white; color:white; cursor: default;"> 
+                                <p>Lorem ipsum dolor sit amet. Eos libero voluptatem sit excepturi rerum vel porro odio est eligendi voluptatibus. At mollitia quam ea dolorum quae aut nemo ipsum est asperiores quibusdam est voluptatem accusamus. Ut eligendi porro quo autem illum non voluptatem rerum et nobis nisi est molestiae facilis quo magni perferendis.
+                                Ea Quis molestiae cum minus consequatur At velit internos et omnis neque qui nihil consequatur et acc</p>
+                            </div> 
+                        </div>
+                        
+                        <div id="chatbot-actions" class="column padded spaced centered">
+                            <div id="suggested-messages" class="row centered spaced">
+                                <div class="suggested-message" on:click|preventDefault={
+                                    async () => {
+                                        await sendMessage("Can you explain the following feedback: \"" + selected_feedback.quote + "\"?");
+                                    }
+                                } >
+                                    Explain feedback.
+                                </div>
+                                <div class="suggested-message" on:click|preventDefault={
+                                    async () => {
+                                        await sendMessage("Can you brainstorm the tasks to do to address the following feedback: \"" + selected_feedback.quote + "\"?");
+                                    }
+                                }>
+                                    Brainstorm actions.
+                                </div>
+                            </div>
+                            <div id="chatbot-input" class="row spaced centered" >
+                                
+                                <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage)}"  placeholder="Type your message here..." id="textarea"></textarea>
+                                <button class="action-button centered column" on:click|preventDefault={async () => { 
+                                        await sendMessage(inputMessage);
+                                        inputMessage = "";
+                                    }}>
+                                    <img src="./logos/send-svgrepo-com.svg" alt="Send" class="action-icon">
+                                </button>
+                            </div>
+                        </div>
+                        
+                    {/if}
+                </div>
+            {/if}
+        </div> -->
