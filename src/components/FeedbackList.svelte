@@ -35,6 +35,16 @@
     let is_loading=false; 
     let load_status = "";
 
+    async function convertImageToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result); // This is the base64 string
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+        });
+    }
+
+
     async function handleImageUpload(image_files) {
         let image_file = image_files[0];
         if(image_file) {
@@ -126,7 +136,7 @@
         feedback_list = feedback_list;
     }
 
-    async function sendMessage(inputMessage,  contexts=null, visual_context=null) {
+    async function sendMessage(inputMessage,  contexts=null) {
         if(inputMessage.trim() === "") {
             alert("Please enter a message.");
             return;
@@ -150,8 +160,16 @@
         let body = {
             message_history: chatbot_messages, 
             message: inputMessage,
-            image_url: visual_context
+            image: null
         };
+
+        if(selected_image) {
+            let image_base64 = await convertImageToBase64(selected_image);
+            body["image"] = image_base64;
+        }
+
+
+        
 
         const response = await fetch("/message_chatbot", {
             method: "POST",
@@ -400,14 +418,14 @@
                                 <span><strong>Suggested messages:</strong></span>
                                 <div class="suggested-message" on:click|preventDefault={
                                         async () => {
-                                            await sendMessage("Can you explain the following feedback?",contexts=contexts, visual_context=image_url);
+                                            await sendMessage("Can you explain the following feedback?",contexts);
                                         }
                                     } >
                                     Explain feedback.
                                 </div>
                                 <div class="suggested-message" on:click|preventDefault={
                                         async () => {
-                                            await sendMessage("Can you brainstorm the tasks to do to address the following feedback?",contexts=contexts, visual_context=image_url);
+                                            await sendMessage("Can you brainstorm the tasks to do to address the following feedback?",contexts);
                                         }
                                     }>
                                     Brainstorm actions.
@@ -449,9 +467,9 @@
                                 </button>
                             </div>
                             
-                            <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, contexts=contexts, visual_context=image_url)}"  placeholder="Type your message here..." id="textarea"></textarea>
+                            <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, contexts)}"  placeholder="Type your message here..." id="textarea"></textarea>
                             <button class="action-button centered column" on:click|preventDefault={async () => { 
-                                    await sendMessage(inputMessage,  contexts=contexts,visual_context=image_url);
+                                    await sendMessage(inputMessage,  contexts);
                                     inputMessage = "";
                                 }}>
                                 <img src="./logos/send-svgrepo-com.svg" alt="Send" class="action-icon">
