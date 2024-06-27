@@ -158,18 +158,15 @@
         feedback_list = feedback_list;
 
         let body = {
-            message_history: chatbot_messages, 
             message: inputMessage,
-            image: null
+            image_data: null
         };
 
         if(selected_image) {
             let image_base64 = await convertImageToBase64(selected_image);
-            body["image"] = image_base64;
+            body["image_data"] = image_base64;
         }
 
-
-        
 
         const response = await fetch("/message_chatbot", {
             method: "POST",
