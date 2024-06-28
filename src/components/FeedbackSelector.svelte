@@ -244,7 +244,7 @@
         await new Promise(resolve => setTimeout(resolve, 500));
         let newRecording = {video: videoSrc, audio: micSrc, transcript: simplified_transcript, transcript_list : transcript_list};
         recording=newRecording;
-        await incrementRecordNumber();
+        // await incrementRecordNumber();
     }
 
     async function extractAudioFromVideo(videoFile) {
@@ -263,9 +263,9 @@
     }
 
     async function handleFilesUpload() {
-        
         if(files) {
             for (const file of files) {
+                console.log(file.type);
                 if(file.type.includes('video')) {
                     let videoSrc = URL.createObjectURL(file);
                     load_status="Uploading video...";
@@ -300,8 +300,9 @@
                     recording=newRecording;
                     micPath=null;
                     videoPath=null;
-                    await incrementRecordNumber();
+                    // await incrementRecordNumber();
                 } else if(file.type.includes('audio')) {
+                    
                     let audioSrc = URL.createObjectURL(file);
                     // Save the audio file and get its path
                     load_status="Uploading audio...";
@@ -341,12 +342,46 @@
                     recording = newRecording;
                     micPath=null;
                     videoPath=null;
-                    await incrementRecordNumber();
+                    // await incrementRecordNumber();
+
+                } else if(file.name.endsWith('.srt')) {
+                    let reader = new FileReader();
+
+                    reader.onload = async function(e) {
+                        is_loading=true;
+                        let text = e.target.result;
+                        console.log(text);
+                        load_status="Cleaning transcript...";
+                        setLoadingProgress("ld-bar-transcript",30);
+                        let simplified_transcript = await simplifyTranscript(text);
+                        let transcript_list = await convertTranscriptToList(simplified_transcript); 
+                        console.log(transcript_list);
+                        load_status="Saving transcript as a database..."
+                        setLoadingProgress("ld-bar-transcript",60);
+                        await embedTranscriptList(transcript_list);
+
+                        load_status="Done!"
+                        setLoadingProgress("ld-bar-transcript",100);
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        let newRecording = {video: null, audio: null, transcript: simplified_transcript, transcript_list:transcript_list};
+                        if(recording) {
+                            recording.transcript_list = transcript_list;
+                            recording.transcript=simplified_transcript;
+                            recording=recording;
+                        } else {
+                            recording = newRecording;
+                        }
+                        // await incrementRecordNumber();
+                        is_loading=false;
+                    }
+                    reader.readAsText(file);
                 }
+
             }
             // Clear the file input
             files=null;
             file_input.value='';
+            setLoadingProgress("ld-bar-transcript",0);
         }
         console.log("Recording", recording);
     
@@ -607,15 +642,19 @@
                 </button>
             </div>
             {#if recording && recording.transcript_list}
-                <p class="spaced padded"> 
-                    {#each recording.transcript_list as excerpt, i}
-                        <span class="timestamp" on:click={() => seekTo(excerpt.start_timestamp, mediaPlayer)}>[{excerpt.start_timestamp}]</span> - <span class="timestamp" on:click={() => seekTo(excerpt.end_timestamp, mediaPlayer)}>[{excerpt.end_timestamp}]</span><br>
-                        {excerpt.speaker ? excerpt.speaker+":" : ""}  
-                        <span id={excerpt.id}>
-                            {@html excerpt.dialogue} 
-                        </span> <br><br>
-                    {/each}
-                </p>
+                
+                    <p class="padded"> 
+                        {#each recording.transcript_list as excerpt, i}
+                            <div class="spaced">
+                                <span class="timestamp" on:click={() => seekTo(excerpt.start_timestamp, mediaPlayer)}>[{excerpt.start_timestamp}]</span> - <span class="timestamp" on:click={() => seekTo(excerpt.end_timestamp, mediaPlayer)}>[{excerpt.end_timestamp}]</span><br>
+                                {excerpt.speaker ? excerpt.speaker+":" : ""}  
+                                <span id={excerpt.id}>
+                                    {@html excerpt.dialogue} 
+                                </span> <br><br>
+                            </div>    
+                        {/each}
+                    </p>
+                
             {:else}
                 <span> No discussion transcript loaded. Please first record or upload your discussion. </span>
             {/if}
@@ -658,8 +697,8 @@
                     </div>
                     <span>or</span>
                     <div class="column centered spaced">
-                        <label for="file_upload" >Upload your own video or audio recording: </label>
-                        <input bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept="video/*, audio/*"/>
+                        <label for="file_upload" >Upload your own video, audio, or transcript (in .srt): </label>
+                        <input bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept="video/*, audio/*, .srt"/>
                         <button on:click={async () => {
                                     is_loading=true;
                                     await handleFilesUpload();
@@ -757,7 +796,7 @@
                 </video>
             {/if}
         </div>
-        <div id="feedback-details-area" class="bordered padded spaced">
+        <div id="feedback-details-area" class="bordered padded spaced" style="overflow-y:auto;">
             <h3 style="font-weight: bold; text-decoration: underline;"> Discussion Transcript Details </h3>
             {#if recording && recording.transcript_list}
                 <strong> Number of participants: {Object.keys(recording.transcript_list.reduce((acc, cur) => {

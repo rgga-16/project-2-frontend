@@ -18,9 +18,9 @@
         "role": "system"
     }];
 
-    let contexts = [];
+    let context;
     let selected_image;
-    let image_url = ''; 
+    let image_url; 
     let image_files;
     let image_input;
 
@@ -50,7 +50,7 @@
         if(image_file) {
             if(image_file.type.includes('image')) {
                 let image_url = URL.createObjectURL(image_file);
-                alert("Image uploaded successfully.");
+                // alert("Image uploaded successfully.");
                 return [image_url, image_file];
             } else {
                 alert("Please select an image file.");
@@ -136,20 +136,15 @@
         feedback_list = feedback_list;
     }
 
-    async function sendMessage(inputMessage,  contexts=null) {
+    async function sendMessage(inputMessage,  context=null) {
         if(inputMessage.trim() === "") {
             alert("Please enter a message.");
             return;
         }
-        
 
-        if (contexts && contexts.length > 0) {
+        if (context) {
             let context_string = "\n\nHere are the pieces of feedback as context.";
-            for(let i =0; i < contexts.length; i++) {
-                let context = contexts[i];
-                console.log(context);
-                context_string += "\nFeedback #"+context.id+": \""+context.speaker+": "+context.quote+"\".";
-            }
+            context_string += "\nF#"+context.id+": \""+context.speaker+": "+context.quote+"\".";
             inputMessage += context_string;
         }
 
@@ -166,7 +161,6 @@
             let image_base64 = await convertImageToBase64(selected_image);
             body["image_data"] = image_base64;
         }
-
 
         const response = await fetch("/message_chatbot", {
             method: "POST",
@@ -188,12 +182,10 @@
     }
 
     function addContext(feedback) {
-        if (!contexts.includes(feedback)) {
-            contexts.push(feedback);
-            contexts = contexts;
-            console.log(contexts);
+        if(context===feedback) {
+            alert("This feedback is already added as context.");
         } else {
-            alert("This feedback is already added to the context.");
+            context = feedback;
         }
     }
 
@@ -215,10 +207,10 @@
                 {#if active_left_tab===0}
                     <div class="column" style="overflow-y: auto;">
                         <div class="feedback-header row" >
-                            <span style="width:3%;" class="centered">
+                            <span class="centered id-col">
                                 <strong>ID</strong>
                             </span>
-                            <span style="width:60%;" class="centered row spaced">
+                            <span  class="centered row spaced feedback-col">
                                 <strong>Feedback</strong>
                                 <button class="action-button" on:click={() => sortFeedbackList('quote')}>
                                     {#if sortAscending && sortKey==='quote'}
@@ -228,7 +220,7 @@
                                     {/if}
                                 </button>
                             </span>
-                            <span style="width:10%;" class="centered row spaced">
+                            <span class="centered row spaced speaker-col">
                                 <strong>Speaker</strong>
                                 <button class="action-button" on:click={() => sortFeedbackList('speaker')}>
                                     {#if sortAscending && sortKey==='speaker'}
@@ -238,10 +230,10 @@
                                     {/if}
                                 </button>
                             </span>
-                            <span id="feedback-buttons" style="width:20%;" class="centered row">
+                            <span id="feedback-buttons"  class="centered row actions-col">
                                 <strong>Actions</strong>
                             </span>
-                            <span style="width:7%;" class="centered row spaced">
+                            <span  class="centered row spaced done-col">
                                 <strong>Done?</strong>
                                 <button class="action-button" on:click={() => sortFeedbackList('done')}>
                                     <img style="height: 1rem; width: 1rem;" src={sortAscending && sortKey==='done' ? "./logos/ascending-sort-svgrepo-com.svg" :  "./logos/descending-sort-svgrepo-com.svg"} alt={sortAscending && sortKey==='done' ? "Sort ascending" : "Sort descending"} class="mini-icon">
@@ -253,15 +245,15 @@
                                 <div class="feedback-row row bordered padded" class:done={feedback.done} class:selected={feedback===selected_feedback} 
                                     on:click={(event) => {
                                         selectFeedback(feedback, event);
-                                        contexts=[];
-                                        addContext(feedback);
+                                        // context=null;
+                                        // addContext(feedback);
                                         focusOnFeedback(feedback);
                                     }}
                                 >
-                                    <span style="width:3%;">
+                                    <span class="id-col">
                                         <strong> {feedback.id} </strong>
                                     </span>
-                                    <div class="column" style="width:60%;">
+                                    <div class="column feedback-col" >
                                         <span  class="">
                                             {#if feedback.positivised_quote && feedback.show_paraphrased}
                                                 <strong>(Paraphrased Feedback)</strong> "{feedback.positivised_quote}" <span class="clickable" on:click={() => showParaphrasedQuote(feedback, false)}>(View original quote)</span>
@@ -269,7 +261,7 @@
                                                 "{feedback.quote}" {#if feedback.positivised_quote && !feedback.show_paraphrased } <span class="clickable" on:click={() => showParaphrasedQuote(feedback, true)}>(View paraphrased quote)</span> {/if}
                                             {/if}
                                         </span>
-                                        <span>
+                                        <!-- <span>
                                             <strong>Task: </strong> 
                                             {#if feedback.task}
                                                 {feedback.task}
@@ -288,18 +280,19 @@
                                                     <img src="./logos/ai-add.png" alt="Generate Task" class="mini-icon">
                                                 </button>
                                             {/if}
-                                        </span>
+                                        </span> -->
                                     </div>
-                                    <span style="width:10%; " class="centered">
+                                    <span  class="centered speaker-col">
                                         {feedback.speaker}
                                     </span>
-                                    <div id="feedback-buttons" style="width:20%;" class="row centered spaced">
+                                    <div id="feedback-buttons"  class="row centered spaced actions-col">
                                         <button class="action-button" on:click={async () => { 
                                             feedback.positivised_quote = await paraphrasePositively(feedback.quote, feedback.excerpt_reference.dialogue);
                                             showParaphrasedQuote(feedback, true);
                                             feedback_list = feedback_list;
                                         }}>
                                             <img src="./logos/ai-positive-paraphrase.png" alt="Paraphrase positively" class="action-icon">
+                                            Positivize
                                         </button>
                                         <button class="action-button centered column" on:click={() => addContext(feedback)}>
                                             <img src="./logos/add-ellipse-svgrepo-com.svg" alt="Add feedback as context" class="action-icon">
@@ -307,10 +300,10 @@
                                         </button>
                                         <button class="action-button" on:click={() => removeFeedback(feedback)} >
                                             <img src="./logos/delete-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
+                                            Delete
                                         </button>
-                                        
                                     </div>
-                                    <span style="width:7%;" class="centered">
+                                    <span  class="centered done-col">
                                         <input type="checkbox" bind:checked={feedback.done} />
                                     </span>
                                 </div>
@@ -318,13 +311,16 @@
                         {/each}
                     </div>
                 {:else if active_left_tab===1}
-                    <div class="grid">
+                    <div class="grid" style="overflow-y: auto;">
                         {#each feedback_list as feedback, i}
                             {#if feedback.type==="positive"}
-                                <div class="positive-feedback-note" class:selected={feedback===selected_feedback} on:click={(event) => selectFeedback(feedback, event)}>
-                                    <p>
-                                        "{feedback.quote}" 
-                                    </p>
+                                <div class="positive-feedback-note" class:selected={feedback===selected_feedback} 
+                                on:click={
+                                (event) => {
+                                    selectFeedback(feedback, event);
+                                    focusOnFeedback(feedback);
+                                }}>
+                                    <p>"{feedback.quote}"</p>
                                     <br>
                                     <span> - {feedback.speaker} </span>
                                 </div>
@@ -401,39 +397,58 @@
 
                     <div id="chatbot-actions" class="column padded spaced centered">
                         <div id="chatbot-utilities" class="row centered spaced" >
-                            <div id="contexts" class="column centered bordered" >
-                                <span><strong>Contexts:</strong></span>
-                                {#if contexts.length > 0}
-                                    {#each contexts as context}
-                                        <div class="suggested-message"> Feedback #{context.id}: {context.quote.slice(0, 5)}... </div>
-                                    {/each}
+                            <div id="contexts" class="column centered bordered" style={image_url ? "width:30%;" : "width:45%;"}>
+                                <span><strong>Feedback Context:</strong></span>
+                                {#if context}
+                                    <!-- {#each contexts as context} -->
+                                    <div class="suggested-message row "> 
+                                        <span>{context.quote.slice(0, 10)}... </span>
+                                        <button on:click|preventDefault={
+                                            () => {
+                                                context=null;
+                                            }}>
+                                            <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove context" class="mini-icon">
+                                        </button>
+                                    </div>
+                                    <!-- {/each} -->
                                 {:else}
                                     <span> None. Add by selecting from the feedback.</span>
                                 {/if}
                             </div>
-                            <div id="suggested-messages" class="column centered bordered">
+                            <div id="suggested-messages" class="column centered bordered" style={image_url ? "width:30%;" : "width:45%;"}>
                                 <span><strong>Suggested messages:</strong></span>
                                 <div class="suggested-message" on:click|preventDefault={
                                         async () => {
-                                            await sendMessage("Can you explain the following feedback?",contexts);
+                                            await sendMessage("Can you explain the following feedback?",context);
                                         }
                                     } >
                                     Explain feedback.
                                 </div>
                                 <div class="suggested-message" on:click|preventDefault={
                                         async () => {
-                                            await sendMessage("Can you brainstorm the tasks to do to address the following feedback?",contexts);
+                                            await sendMessage("Can you brainstorm the tasks to do to address the following feedback?",context);
                                         }
                                     }>
                                     Brainstorm actions.
                                 </div>
                             </div>
-                            <div id="visual-context" class="column centered bordered">
-                                <span><strong>Visual context:</strong></span>
+                            <div id="visual-context" class="column centered bordered" style={image_url ? "width:30%;" : "display:none;"}>
+                                
                                 {#if image_url}
-                                    <img src={image_url} alt="Visual context" style="width:100%; height:100%;">
+                                    <span><strong>Attached image:</strong></span>
+                                    <div class="row" style="width:100%; height:100%;">
+                                        <img src={image_url} alt="Visual context" style="width:100%; height:100%;">
+                                        <button on:click|preventDefault={
+                                            () => {
+                                                image_url = null;
+                                                selected_image = null;
+                                            }}>
+                                            <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove context" class="mini-icon">
+                                        </button>
+                                    </div>
+                                    
                                 {:else}
-                                    <span> None. Attach an image or screenshot.</span>
+                                    
                                 {/if}
                             </div>
                         </div>
@@ -466,7 +481,7 @@
                             
                             <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, contexts)}"  placeholder="Type your message here..." id="textarea"></textarea>
                             <button class="action-button centered column" on:click|preventDefault={async () => { 
-                                    await sendMessage(inputMessage,  contexts);
+                                    await sendMessage(inputMessage,  context);
                                     inputMessage = "";
                                 }}>
                                 <img src="./logos/send-svgrepo-com.svg" alt="Send" class="action-icon">
@@ -618,13 +633,16 @@
 
     #suggested-messages{
         height:100%;
-        width:70%;
         gap: 0.10rem;
     }
 
     #contexts{
         height:100%;
-        width:30%;
+        gap: 0.10rem;
+    }
+
+    #visual-context{
+        height:100%;
         gap: 0.10rem;
     }
 
@@ -716,6 +734,26 @@
 
     .positive-feedback-note.selected{
         border: 2px solid #000000;
+    }
+
+    .id-col {
+        width:3%;
+    }
+
+    .feedback-col {
+        width:50%;
+    }
+
+    .speaker-col {
+        width:15%;
+    }
+
+    .actions-col {
+        width:25%;
+    }
+
+    .done-col {
+        width:7%;
     }
     
     
