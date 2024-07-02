@@ -479,7 +479,7 @@
                                 </button>
                             </div>
                             
-                            <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, contexts)}"  placeholder="Type your message here..." id="textarea"></textarea>
+                            <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, context)}"  placeholder="Type your message here..." id="textarea"></textarea>
                             <button class="action-button centered column" on:click|preventDefault={async () => { 
                                     await sendMessage(inputMessage,  context);
                                     inputMessage = "";

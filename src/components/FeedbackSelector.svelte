@@ -8,6 +8,7 @@
     let feedback_idx = 0; 
 
     let mediaPlayer; 
+    let ld_bar_transcript;
 
     let is_recording=false;
     let is_paused=false;
@@ -29,6 +30,10 @@
 
     let is_loading=false;
     let load_status = "";
+
+    async function pause(milliseconds) {
+        return new Promise(resolve => setTimeout(resolve, milliseconds));
+    }
 
     async function incrementRecordNumber() {
         let response = await fetch('/increment_record_number', {
@@ -215,7 +220,7 @@
         micStream.getTracks().forEach(track => track.stop());
 
         load_status="Saving video and audio ...";
-        setLoadingProgress("ld-bar-transcript",20);
+        setLoadingProgress(ld_bar_transcript,20);
         videoPath = await sendVideoToServer(videoChunks); //Bug workaround: Do this for the first time because newly created vidblob is empty during first time.
         videoPath = await sendVideoToServer(videoChunks); 
         videoChunks = [];
@@ -227,20 +232,20 @@
         let micSrc = await fetchAudio(micPath);
 
         load_status="Transcribing audio (this may take a while) ...";
-        setLoadingProgress("ld-bar-transcript",40);
+        setLoadingProgress(ld_bar_transcript,40);
         let transcript = await transcribeMic(micPath);
 
         load_status="Cleaning transcript..."
-        setLoadingProgress("ld-bar-transcript",60);
+        setLoadingProgress(ld_bar_transcript,60);
         let simplified_transcript = await simplifyTranscript(transcript);
         let transcript_list = await convertTranscriptToList(simplified_transcript);
 
-        load_status="Saving transcript as a database..."
-        setLoadingProgress("ld-bar-transcript",80);
+        load_status="Saving transcript as a database (this may take a while) ... "
+        setLoadingProgress(ld_bar_transcript,80);
         await embedTranscriptList(transcript_list);
 
         load_status="Done!"
-        setLoadingProgress("ld-bar-transcript",100);
+        setLoadingProgress(ld_bar_transcript,100);
         await new Promise(resolve => setTimeout(resolve, 500));
         let newRecording = {video: videoSrc, audio: micSrc, transcript: simplified_transcript, transcript_list : transcript_list};
         recording=newRecording;
@@ -269,7 +274,7 @@
                 if(file.type.includes('video')) {
                     let videoSrc = URL.createObjectURL(file);
                     load_status="Uploading video...";
-                    setLoadingProgress("ld-bar-transcript",20);
+                    setLoadingProgress(ld_bar_transcript,20);
                     [micPath, videoPath] = await extractAudioFromVideo(file);
                     if(!micPath) {
                         micPath = null;
@@ -279,22 +284,22 @@
                     let micSrc = await fetchAudio(micPath);
 
                     load_status="Transcribing audio (this may take a while) ...";
-                    setLoadingProgress("ld-bar-transcript",40);
+                    setLoadingProgress(ld_bar_transcript,40);
                     let transcript = await transcribeMic(micPath);
 
                     load_status="Cleaning transcript...";
-                    setLoadingProgress("ld-bar-transcript",60);
+                    setLoadingProgress(ld_bar_transcript,60);
                     // load_status="Extracting video frames from transcript timestamps...";
                     // let timestamp_frames = await extractFrames(videoPath, transcript);
                     let simplified_transcript = await simplifyTranscript(transcript);
                     let transcript_list = await convertTranscriptToList(simplified_transcript);
 
-                    load_status="Saving transcript as a database..."
-                    setLoadingProgress("ld-bar-transcript",80);
+                    load_status="Saving transcript as a database (this may take a while) ... "
+                    setLoadingProgress(ld_bar_transcript,80);
                     await embedTranscriptList(transcript_list);
 
                     load_status="Done!"
-                    setLoadingProgress("ld-bar-transcript",100);
+                    setLoadingProgress(ld_bar_transcript,100);
                     await new Promise(resolve => setTimeout(resolve, 500));
                     let newRecording = {video: videoSrc, audio: micSrc, transcript: simplified_transcript, transcript_list:transcript_list};
                     recording=newRecording;
@@ -306,7 +311,7 @@
                     let audioSrc = URL.createObjectURL(file);
                     // Save the audio file and get its path
                     load_status="Uploading audio...";
-                    setLoadingProgress("ld-bar-transcript",20);
+                    setLoadingProgress(ld_bar_transcript,20);
                     const formData = new FormData();
                     formData.append('audio', file);
                     const response = await fetch('/download_mic', {
@@ -323,20 +328,20 @@
 
                     // Transcribe the audio
                     load_status="Transcribing audio (this may take a while) ...";
-                    setLoadingProgress("ld-bar-transcript",40);
+                    setLoadingProgress(ld_bar_transcript,40);
                     let transcript = await transcribeMic(micPath);
 
                     load_status="Cleaning transcript...";
-                    setLoadingProgress("ld-bar-transcript",60);
+                    setLoadingProgress(ld_bar_transcript,60);
                     let simplified_transcript = await simplifyTranscript(transcript);
                     let transcript_list = await convertTranscriptToList(simplified_transcript);
 
-                    load_status="Saving transcript as a database..."
-                    setLoadingProgress("ld-bar-transcript",80);
+                    load_status="Saving transcript as a database (this may take a while) ... "
+                    setLoadingProgress(ld_bar_transcript,80);
                     await embedTranscriptList(transcript_list);
 
                     load_status="Done!"
-                    setLoadingProgress("ld-bar-transcript",100);
+                    setLoadingProgress(ld_bar_transcript,100);
                     await new Promise(resolve => setTimeout(resolve, 500));
                     let newRecording = {video: null, audio: audioSrc, transcript: simplified_transcript, transcript_list:transcript_list};
                     recording = newRecording;
@@ -348,20 +353,24 @@
                     let reader = new FileReader();
 
                     reader.onload = async function(e) {
+                        console.log(ld_bar_transcript);
                         is_loading=true;
                         let text = e.target.result;
                         console.log(text);
                         load_status="Cleaning transcript...";
-                        setLoadingProgress("ld-bar-transcript",30);
+                        setLoadingProgress(ld_bar_transcript,30);
                         let simplified_transcript = await simplifyTranscript(text);
+                        await new Promise(resolve => setTimeout(resolve, 2500));
+
+                        console.log(simplified_transcript)
                         let transcript_list = await convertTranscriptToList(simplified_transcript); 
                         console.log(transcript_list);
-                        load_status="Saving transcript as a database..."
-                        setLoadingProgress("ld-bar-transcript",60);
+                        load_status="Saving transcript as a database (this may take a while) ... "
+                        setLoadingProgress(ld_bar_transcript,60);
                         await embedTranscriptList(transcript_list);
-
+                        console.log("Transcript list embedded")
                         load_status="Done!"
-                        setLoadingProgress("ld-bar-transcript",100);
+                        setLoadingProgress(ld_bar_transcript,100);
                         await new Promise(resolve => setTimeout(resolve, 500));
                         let newRecording = {video: null, audio: null, transcript: simplified_transcript, transcript_list:transcript_list};
                         if(recording) {
@@ -381,7 +390,7 @@
             // Clear the file input
             files=null;
             file_input.value='';
-            setLoadingProgress("ld-bar-transcript",0);
+            setLoadingProgress(ld_bar_transcript,0);
         }
         console.log("Recording", recording);
     
@@ -428,10 +437,11 @@
             let id= excerpt.id;
             let start = excerpt.start_timestamp;
             let end = excerpt.end_timestamp;
-            let speaker = excerpt.speaker;
+            
             let dialogue = excerpt.dialogue;
 
-            if(excerpt.speaker){
+            if("speaker" in excerpt && excerpt.speaker != ""){
+                let speaker = excerpt.speaker;
                 transcript_str += `${id}\n${start} --> ${end}\n${speaker}: ${dialogue}\n\n`;
             } else {
                 transcript_str += `${id}\n${start} --> ${end}\n${dialogue}\n\n`;
@@ -589,19 +599,24 @@
         return null;
     }
 
-    function setLoadingProgress(loadbar_id, value) {
-        var bar = document.getElementById(loadbar_id).ldBar;
+    // function setLoadingProgress(loadbar_id, value) {
+    //     var bar = document.getElementById(loadbar_id).ldBar;
+    //     bar.set(value);
+    // }
+
+    function setLoadingProgress(loadbar, value) {
+        let bar = loadbar.ldBar;
         bar.set(value);
     }
 
     
 
-    onMount(async () => {
-        if(recording && recording.transcript_list) {
-            await embedTranscriptList(recording.transcript_list);
-            console.log("Transcript list embedded");
-        }
-    });
+    // onMount(async () => {
+    //     if(recording && recording.transcript_list) {
+    //         await embedTranscriptList(recording.transcript_list);
+    //         console.log("Transcript list embedded");
+    //     }
+    // });
 </script>
 
 <div div class="row spaced" id="feedback-selector-page">
@@ -609,7 +624,7 @@
         <div id="transcript-area" class="column bordered spaced">
 
             <div class="overlay centered padded" class:invisible={is_loading===false}> 
-                <div id="ld-bar-transcript" class="ldBar centered column" data-preset="circle" data-value=0 style="width:100%; height: 20%;">
+                <div bind:this={ld_bar_transcript} id="ld-bar-transcript" class="ldBar centered column" data-preset="circle" data-value=0 style="width:100%; height: 20%;">
                     {load_status}
                 </div>
             </div>
@@ -642,19 +657,17 @@
                 </button>
             </div>
             {#if recording && recording.transcript_list}
-                
-                    <p class="padded"> 
-                        {#each recording.transcript_list as excerpt, i}
-                            <div class="spaced">
-                                <span class="timestamp" on:click={() => seekTo(excerpt.start_timestamp, mediaPlayer)}>[{excerpt.start_timestamp}]</span> - <span class="timestamp" on:click={() => seekTo(excerpt.end_timestamp, mediaPlayer)}>[{excerpt.end_timestamp}]</span><br>
-                                {excerpt.speaker ? excerpt.speaker+":" : ""}  
-                                <span id={excerpt.id}>
-                                    {@html excerpt.dialogue} 
-                                </span> <br><br>
-                            </div>    
-                        {/each}
-                    </p>
-                
+                <p class="padded"> 
+                    {#each recording.transcript_list as excerpt, i}
+                        <div class="spaced">
+                            <span class="timestamp" on:click={() => seekTo(excerpt.start_timestamp, mediaPlayer)}>[{excerpt.start_timestamp}]</span> - <span class="timestamp" on:click={() => seekTo(excerpt.end_timestamp, mediaPlayer)}>[{excerpt.end_timestamp}]</span><br>
+                            {excerpt.speaker ? excerpt.speaker+":" : ""}  
+                            <span id={excerpt.id}>
+                                {@html excerpt.dialogue} 
+                            </span> <br><br>
+                        </div>    
+                    {/each}
+                </p>
             {:else}
                 <span> No discussion transcript loaded. Please first record or upload your discussion. </span>
             {/if}
@@ -705,6 +718,7 @@
                                     is_loading=false;
                                 }} 
                         disabled={is_loading || !files || files.length===0}> 
+
                             Upload files
                         </button> 
                     </div>
@@ -717,7 +731,7 @@
                         disabled={!recording || !recording.transcript_list || is_loading}
                         on:click={async () => {
                             is_loading=true;
-                            setLoadingProgress("ld-bar-transcript",0); 
+                            setLoadingProgress(ld_bar_transcript,0); 
                             feedback_list=[];
 
                             let list = recording.transcript_list;
@@ -733,11 +747,13 @@
                             for(let i=0; i < chunks.length; i++) {
                                 let thing = await autoDetectFeedback(chunks[i]);
                                 feedback_list = feedback_list.concat(thing);
-                                setLoadingProgress("ld-bar-transcript",(i+1) * 20); 
+                                setLoadingProgress(ld_bar_transcript,(i+1) * 20); 
+                                await new Promise(resolve => setTimeout(resolve, 250));
                             }
                             feedback_list=feedback_list;
                             console.log(feedback_list);
                             for(let j = 0; j < feedback_list.length; j++) {
+                                feedback_list[j].id = j+1; // Assign unique id to each feedback
                                 let reference_id = feedback_list[j].dialogue_id;
                                 let excerpt = findExcerptByID(recording.transcript_list,reference_id);
                                 feedback_list[j].excerpt_reference=excerpt;
@@ -746,10 +762,10 @@
                             load_status="Highlighting feedback ..."
                             autoHighlightFeedback(feedback_list);
                             await new Promise(resolve => setTimeout(resolve, 500));
-                            setLoadingProgress("ld-bar-transcript",100); 
+                            setLoadingProgress(ld_bar_transcript,100); 
                             console.log("Feedback: " + feedback_list[0]);
                             is_loading=false;
-                            setLoadingProgress("ld-bar-transcript",0); 
+                            setLoadingProgress(ld_bar_transcript,0); 
                             load_status="";
                         }}
                     > 
