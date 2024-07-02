@@ -301,6 +301,7 @@
                     load_status="Done!"
                     setLoadingProgress(ld_bar_transcript,100);
                     await new Promise(resolve => setTimeout(resolve, 500));
+                    setLoadingProgress(ld_bar_transcript,0);
                     let newRecording = {video: videoSrc, audio: micSrc, transcript: simplified_transcript, transcript_list:transcript_list};
                     recording=newRecording;
                     micPath=null;
@@ -343,6 +344,7 @@
                     load_status="Done!"
                     setLoadingProgress(ld_bar_transcript,100);
                     await new Promise(resolve => setTimeout(resolve, 500));
+                    setLoadingProgress(ld_bar_transcript,0);
                     let newRecording = {video: null, audio: audioSrc, transcript: simplified_transcript, transcript_list:transcript_list};
                     recording = newRecording;
                     micPath=null;
@@ -372,6 +374,7 @@
                         load_status="Done!"
                         setLoadingProgress(ld_bar_transcript,100);
                         await new Promise(resolve => setTimeout(resolve, 500));
+                        setLoadingProgress(ld_bar_transcript,0);
                         let newRecording = {video: null, audio: null, transcript: simplified_transcript, transcript_list:transcript_list};
                         if(recording) {
                             recording.transcript_list = transcript_list;
@@ -815,20 +818,24 @@
         <div id="feedback-details-area" class="bordered padded spaced" style="overflow-y:auto;">
             <h3 style="font-weight: bold; text-decoration: underline;"> Discussion Transcript Details </h3>
             {#if recording && recording.transcript_list}
-                <strong> Number of participants: {Object.keys(recording.transcript_list.reduce((acc, cur) => {
-                    acc[cur.speaker] = true;
-                    return acc;
-                }, {})).length}</strong> <br>
-                <ul>
-                    {#each Object.entries(recording.transcript_list.reduce((acc, cur) => {
-                        acc[cur.speaker] = (acc[cur.speaker] || 0) + 1;
+                {#if "speaker" in recording.transcript_list[0]} 
+                    <strong> Number of participants: {Object.keys(recording.transcript_list.reduce((acc, cur) => {
+                        acc[cur.speaker] = true;
                         return acc;
-                    }, {})) as [pa, count]}
-                        <!-- <li> - {pa}: {count} utterances</li> -->
-                        <li> - {pa} </li>
-                    {/each}
-                </ul>
-                <br>
+                    }, {})).length}</strong> <br>
+                    <ul>
+                        {#each Object.entries(recording.transcript_list.reduce((acc, cur) => {
+                            acc[cur.speaker] = (acc[cur.speaker] || 0) + 1;
+                            return acc;
+                        }, {})) as [pa, count]}
+                            <li> - {pa}: {count} utterances</li>
+                            <!-- <li> - {pa} </li> -->
+                        {/each}
+                    </ul>
+                    <br>
+                {/if}
+                
+                
                 {#if feedback_list}
                     <strong> Number of feedback utterances: {feedback_list.length} </strong>
                     <ul>

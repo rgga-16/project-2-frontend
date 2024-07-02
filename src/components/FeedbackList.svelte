@@ -255,6 +255,13 @@
                                     </span>
                                     <div class="column feedback-col" >
                                         <span  class="">
+                                            <span class="timestamp" on:click={
+                                                () => {
+                                                    active_right_tab = 0;
+                                                    seekTo(feedback.excerpt_reference.start_timestamp, mediaPlayer);
+                                                }}>
+                                                [{feedback.excerpt_reference.start_timestamp}]
+                                            </span> 
                                             {#if feedback.positivised_quote && feedback.show_paraphrased}
                                                 <strong>(Paraphrased Feedback)</strong> "{feedback.positivised_quote}" <span class="clickable" on:click={() => showParaphrasedQuote(feedback, false)}>(View original quote)</span>
                                             {:else}
@@ -684,16 +691,6 @@
         height: 100%;
         width: auto; 
         border: 0 none;
-    }
-
-    .action-icon {
-        height: 3rem;
-        width: 3rem;
-    }
-
-    .mini-icon {
-        height: 1.5rem;
-        width: 1.5rem;
     }
 
     span.clickable {
