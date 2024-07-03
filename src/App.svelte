@@ -779,7 +779,6 @@
     // };
 	
     let feedback_list=[];
-
     // let feedback_list = [
     //     {
     //         "chatbot_messages": [

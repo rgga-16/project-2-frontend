@@ -1,5 +1,20 @@
+export async function pause(milliseconds) {
+    return new Promise(resolve => setTimeout(resolve, milliseconds));
+}
 
+export async function saveConversationHistory(conversation_history) {
 
+}
+
+export async function logAction(action, data) {
+    console.log("Action: " + action);
+    console.log(data);
+}
+
+export function setLoadingProgress(loadbar, value) {
+    let bar = loadbar.ldBar;
+    bar.set(value);
+}
 
 export function timeToSeconds(time) {
     // time is in the format HH:MM:SS,MILISECONDS, e.g., 00:00:53,531

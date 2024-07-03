@@ -1,6 +1,7 @@
 <script>
     import {onMount} from 'svelte';
-    import {timeToSeconds, seekTo, focusOnFeedback} from '../utils.js';
+    import LoadingBar from './LoadingBar.svelte';
+    import {timeToSeconds, seekTo, focusOnFeedback, setLoadingProgress, pause} from '../utils.js';
     
     export let recording;
     export let feedback_list;
@@ -30,10 +31,9 @@
 
     let is_loading=false;
     let load_status = "";
+    let progress = 0;
 
-    async function pause(milliseconds) {
-        return new Promise(resolve => setTimeout(resolve, milliseconds));
-    }
+    
 
     async function incrementRecordNumber() {
         let response = await fetch('/increment_record_number', {
@@ -220,7 +220,7 @@
         micStream.getTracks().forEach(track => track.stop());
 
         load_status="Saving video and audio ...";
-        setLoadingProgress(ld_bar_transcript,20);
+        progress=20; 
         videoPath = await sendVideoToServer(videoChunks); //Bug workaround: Do this for the first time because newly created vidblob is empty during first time.
         videoPath = await sendVideoToServer(videoChunks); 
         videoChunks = [];
@@ -232,21 +232,21 @@
         let micSrc = await fetchAudio(micPath);
 
         load_status="Transcribing audio (this may take a while) ...";
-        setLoadingProgress(ld_bar_transcript,40);
+        progress=40;
         let transcript = await transcribeMic(micPath);
 
         load_status="Cleaning transcript..."
-        setLoadingProgress(ld_bar_transcript,60);
+        progress=60;
         let simplified_transcript = await simplifyTranscript(transcript);
         let transcript_list = await convertTranscriptToList(simplified_transcript);
 
         load_status="Saving transcript as a database (this may take a while) ... "
-        setLoadingProgress(ld_bar_transcript,80);
+        progress=80;
         await embedTranscriptList(transcript_list);
 
         load_status="Done!"
-        setLoadingProgress(ld_bar_transcript,100);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        progress=100;
+        await pause(1500); 
         let newRecording = {video: videoSrc, audio: micSrc, transcript: simplified_transcript, transcript_list : transcript_list};
         recording=newRecording;
         // await incrementRecordNumber();
@@ -267,14 +267,24 @@
         return [json["audiopath"], json["videopath"]];
     }
 
-    async function handleFilesUpload() {
+    async function handleMediaUpload() {
         if(files) {
             for (const file of files) {
                 console.log(file.type);
                 if(file.type.includes('video')) {
+                    if(recording || "video" in recording || "audio" in recording || "transcript_list" in recording || feedback_list.length > 0) {
+                        if(recording.video || recording.audio || recording.transcript_list.length > 0) {
+                            let confirm = window.confirm("Uploading a new video will overwrite this recording and clear highlighted feedback. Do you want to proceed?");
+                            if(!confirm) {
+                                return;
+                            }
+                        }
+                    }
+                    feedback_list=[];
+
                     let videoSrc = URL.createObjectURL(file);
                     load_status="Uploading video...";
-                    setLoadingProgress(ld_bar_transcript,20);
+                    progress=20;
                     [micPath, videoPath] = await extractAudioFromVideo(file);
                     if(!micPath) {
                         micPath = null;
@@ -284,35 +294,43 @@
                     let micSrc = await fetchAudio(micPath);
 
                     load_status="Transcribing audio (this may take a while) ...";
-                    setLoadingProgress(ld_bar_transcript,40);
+                    progress=40;
                     let transcript = await transcribeMic(micPath);
 
                     load_status="Cleaning transcript...";
-                    setLoadingProgress(ld_bar_transcript,60);
+                    progress=60;
                     // load_status="Extracting video frames from transcript timestamps...";
                     // let timestamp_frames = await extractFrames(videoPath, transcript);
                     let simplified_transcript = await simplifyTranscript(transcript);
                     let transcript_list = await convertTranscriptToList(simplified_transcript);
 
                     load_status="Saving transcript as a database (this may take a while) ... "
-                    setLoadingProgress(ld_bar_transcript,80);
+                    progress=80;
                     await embedTranscriptList(transcript_list);
 
                     load_status="Done!"
-                    setLoadingProgress(ld_bar_transcript,100);
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    setLoadingProgress(ld_bar_transcript,0);
+                    progress=100;
+                    pause(1500);
+                    progress=0;
                     let newRecording = {video: videoSrc, audio: micSrc, transcript: simplified_transcript, transcript_list:transcript_list};
                     recording=newRecording;
                     micPath=null;
                     videoPath=null;
                     // await incrementRecordNumber();
                 } else if(file.type.includes('audio')) {
-                    
+                    if(recording || "audio" in recording || "video" in recording || "transcript_list" in recording || feedback_list.length > 0) {
+                        if(recording.audio || recording.video || recording.transcript_list.length > 0) {
+                            let confirm = window.confirm("Uploading a new audio will overwrite this recording and clear highlighted feedback. Do you want to proceed?");
+                            if(!confirm) {
+                                return;
+                            }
+                        }
+                    }
+                    feedback_list=[];
                     let audioSrc = URL.createObjectURL(file);
                     // Save the audio file and get its path
                     load_status="Uploading audio...";
-                    setLoadingProgress(ld_bar_transcript,20);
+                    progress=20;
                     const formData = new FormData();
                     formData.append('audio', file);
                     const response = await fetch('/download_mic', {
@@ -329,29 +347,57 @@
 
                     // Transcribe the audio
                     load_status="Transcribing audio (this may take a while) ...";
-                    setLoadingProgress(ld_bar_transcript,40);
+                    progress=40;
                     let transcript = await transcribeMic(micPath);
 
                     load_status="Cleaning transcript...";
-                    setLoadingProgress(ld_bar_transcript,60);
+                    progress=60;
                     let simplified_transcript = await simplifyTranscript(transcript);
                     let transcript_list = await convertTranscriptToList(simplified_transcript);
 
                     load_status="Saving transcript as a database (this may take a while) ... "
-                    setLoadingProgress(ld_bar_transcript,80);
+                    progress=80;
                     await embedTranscriptList(transcript_list);
 
                     load_status="Done!"
-                    setLoadingProgress(ld_bar_transcript,100);
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    setLoadingProgress(ld_bar_transcript,0);
+                    progress=100; 
+                    await pause(1500);
+                    progress=0;
                     let newRecording = {video: null, audio: audioSrc, transcript: simplified_transcript, transcript_list:transcript_list};
                     recording = newRecording;
                     micPath=null;
                     videoPath=null;
                     // await incrementRecordNumber();
 
-                } else if(file.name.endsWith('.srt')) {
+                } 
+            }
+            // Clear the file input
+            files=null;
+            file_input.value='';
+            
+        }
+        console.log("Recording", recording);
+        progress=0;
+        load_status="";
+    
+    }
+
+    async function handleTranscriptUpload() {
+        if(files) {
+            for (const file of files) {
+                console.log(file.type);
+                if(file.name.endsWith('.srt')) {
+
+                    if(recording || "transcript" in recording || "transcript_list" in recording || feedback_list.length > 0) {
+                        if(recording.transcript || recording.transcript_list.length > 0) {
+                            let confirm = window.confirm("Uploading a new transcript will overwrite the current transcript and clear highlighted feedback. Do you want to proceed?");
+                            if(!confirm) {
+                                return;
+                            }
+                        }
+                    }
+                    feedback_list=[];
+
                     let reader = new FileReader();
 
                     reader.onload = async function(e) {
@@ -360,23 +406,23 @@
                         let text = e.target.result;
                         console.log(text);
                         load_status="Cleaning transcript...";
-                        setLoadingProgress(ld_bar_transcript,30);
+                        progress=30;
                         let simplified_transcript = await simplifyTranscript(text);
-                        await new Promise(resolve => setTimeout(resolve, 2500));
+                        await pause(1500); 
 
                         console.log(simplified_transcript)
                         let transcript_list = await convertTranscriptToList(simplified_transcript); 
                         console.log(transcript_list);
                         load_status="Saving transcript as a database (this may take a while) ... "
-                        setLoadingProgress(ld_bar_transcript,60);
+                        progress=60;
                         await embedTranscriptList(transcript_list);
                         console.log("Transcript list embedded")
                         load_status="Done!"
-                        setLoadingProgress(ld_bar_transcript,100);
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        setLoadingProgress(ld_bar_transcript,0);
+                        progress=100;
+                        await pause(500); 
+                        progress=0;
                         let newRecording = {video: null, audio: null, transcript: simplified_transcript, transcript_list:transcript_list};
-                        if(recording) {
+                        if(recording && (("video" in recording && recording.video) || ("audio" in recording && recording.audio))) {
                             recording.transcript_list = transcript_list;
                             recording.transcript=simplified_transcript;
                             recording=recording;
@@ -393,10 +439,11 @@
             // Clear the file input
             files=null;
             file_input.value='';
-            setLoadingProgress(ld_bar_transcript,0);
+            
         }
         console.log("Recording", recording);
-    
+        progress=0;
+        load_status="";
     }
 
     async function simplifyTranscript(transcript) {
@@ -505,6 +552,10 @@
 
     function removeFeedback() {
         const selection = window.getSelection().toString();
+        if(selection.trim() === "") {
+            alert("Please highlight the feedback you want to remove using your cursor.");
+            return;
+        }
         if(selection) {
             for(let i=0; i < feedback_list.length; i++) {
                 let feedback = feedback_list[i];
@@ -602,15 +653,7 @@
         return null;
     }
 
-    // function setLoadingProgress(loadbar_id, value) {
-    //     var bar = document.getElementById(loadbar_id).ldBar;
-    //     bar.set(value);
-    // }
-
-    function setLoadingProgress(loadbar, value) {
-        let bar = loadbar.ldBar;
-        bar.set(value);
-    }
+    
 
     
 
@@ -627,9 +670,10 @@
         <div id="transcript-area" class="column bordered spaced">
 
             <div class="overlay centered padded" class:invisible={is_loading===false}> 
-                <div bind:this={ld_bar_transcript} id="ld-bar-transcript" class="ldBar centered column" data-preset="circle" data-value=0 style="width:100%; height: 20%;">
+                    <LoadingBar bind:progress={progress} bind:status={load_status} />
+                <!-- <div bind:this={ld_bar_transcript} id="ld-bar-transcript" class="ldBar centered column" data-preset="circle" data-value=0 style="width:100%; height: 20%;">
                     {load_status}
-                </div>
+                </div> -->
             </div>
 
             <div id="traverse-feedback-area" class="bordered spaced" >
@@ -672,17 +716,34 @@
                     {/each}
                 </p>
             {:else}
-                <span> No discussion transcript loaded. Please first record or upload your discussion. </span>
+                <div class="centered" style="height: 100%; width: 100%;">
+                    <span> No discussion transcript loaded. Please first record or upload your discussion. </span>
+                </div>
+                
             {/if}
         </div>
         <div id="transcript-buttons-area" class="row centered spaced">
-            <div id="capture-feedback-panel" class="column bordered spaced">
+            <div id="capture-feedback-panel" class="column bordered padded">
                 <span style="font-weight: bold; text-decoration: underline; margin-left: 1rem;"> Step 1: Record or upload your discussion.</span>
                 <div class="row centered spaced">
                     <div class="column centered">
                         <span >Screen record your discussion</span>
                         <div class="row spaced">
-                            <button class="action-button" on:click={() => startRecording()} disabled={is_recording || is_paused} >
+                            <button class="action-button" on:click={() => {
+                                if("video" in recording || "audio" in recording || "transcript_list" in recording || feedback_list.length > 0) {
+                                    if(recording.video || recording.audio || recording.transcript_list.length > 0 ) {
+                                        let confirm = window.confirm("Starting a new recording will clear all highlighted feedback and overwrite the existing recording. Do you want to proceed?");
+                                        if(!confirm) {
+                                            return;
+                                        }
+                                    }
+                                }
+
+                                
+                                feedback_list=[]; 
+                                startRecording();
+
+                            }} disabled={is_recording || is_paused} >
                                 <img src="./logos/record-video-svgrepo-com.svg" alt="Start recording" class="logo">
                                 Record
                             </button>
@@ -713,90 +774,132 @@
                     </div>
                     <span>or</span>
                     <div class="column centered spaced">
-                        <label for="file_upload" >Upload your own video, audio, or transcript (in .srt): </label>
-                        <input bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept="video/*, audio/*, .srt"/>
-                        <button on:click={async () => {
-                                    is_loading=true;
-                                    await handleFilesUpload();
-                                    is_loading=false;
-                                }} 
-                        disabled={is_loading || !files || files.length===0}> 
+                        <label for="file_upload" >Upload your own video or audio: </label>
+                        <div class="row centered">
+                            <input bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept="video/*, audio/*"/>
+                            <button class="action-button centered column " on:click={async () => {
+                                        // if(feedback_list.length > 0) {
+                                        //     let confirm = window.confirm("Uploading a new file will clear all highlighted feedback. Do you want to proceed?");
+                                        //     if(!confirm) {
+                                        //         return;
+                                        //     }
+                                        // }
+                                        is_loading=true;
+                                        
+                                        await handleMediaUpload();
+                                        is_loading=false;
+                                    }} 
+                            disabled={is_loading || !files || files.length===0}> 
+                                <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
+                                Upload file 
+                            </button> 
+                        </div>
 
-                            Upload files
-                        </button> 
+                        <label for="file_upload" >Upload your own transcript (in .srt only): </label>
+                        <div class="row centered">
+                            <input bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept=" .srt"/>
+                            <button class="action-button centered column " on:click={async () => {
+                                        // if(feedback_list.length > 0) {
+                                        //     let confirm = window.confirm("Uploading a new file will clear all highlighted feedback. Do you want to proceed?");
+                                        //     if(!confirm) {
+                                        //         return;
+                                        //     }
+                                        // }
+                                        is_loading=true;
+                                        
+                                        await handleTranscriptUpload();
+                                        is_loading=false;
+                                    }} 
+                            disabled={is_loading || !files || files.length===0}> 
+                                <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
+                                Upload file
+                            </button> 
+                        </div>
+                        
                     </div>
                 </div>
             </div>
-            <div id="feedback-highlight-panel" class ="column bordered spaced ">
+            <div id="feedback-highlight-panel" class ="column bordered spaced padded ">
                 <span style="font-weight: bold; text-decoration: underline; margin-left: 1rem;"> Step 2: Highlight feedback in the discussion's transcript.</span>
-                <div class="row centered spaced">
-                    <button class = "action-button" 
-                        disabled={!recording || !recording.transcript_list || is_loading}
-                        on:click={async () => {
-                            is_loading=true;
-                            setLoadingProgress(ld_bar_transcript,0); 
-                            feedback_list=[];
-
-                            let list = recording.transcript_list;
-                            // Divide list into 4 equally sized chunks.
-                            let chunk_size = Math.ceil(list.length / 4);
-                            let chunk1 = list.slice(0, chunk_size);
-                            let chunk2 = list.slice(chunk_size, 2 * chunk_size);
-                            let chunk3 = list.slice(2 * chunk_size, 3 * chunk_size);
-                            let chunk4 = list.slice(3 * chunk_size, list.length);
-                            let chunks=[chunk1, chunk2, chunk3, chunk4];
-
-                            load_status="Detecting feedback in transcript ...";
-                            for(let i=0; i < chunks.length; i++) {
-                                let thing = await autoDetectFeedback(chunks[i]);
-                                feedback_list = feedback_list.concat(thing);
-                                setLoadingProgress(ld_bar_transcript,(i+1) * 20); 
-                                await new Promise(resolve => setTimeout(resolve, 250));
-                            }
-                            feedback_list=feedback_list;
-                            console.log(feedback_list);
-                            for(let j = 0; j < feedback_list.length; j++) {
-                                feedback_list[j].id = j+1; // Assign unique id to each feedback
-                                let reference_id = feedback_list[j].dialogue_id;
-                                let excerpt = findExcerptByID(recording.transcript_list,reference_id);
-                                feedback_list[j].excerpt_reference=excerpt;
-                            }
-                            feedback_list=feedback_list;
-                            load_status="Highlighting feedback ..."
-                            autoHighlightFeedback(feedback_list);
-                            await new Promise(resolve => setTimeout(resolve, 500));
-                            setLoadingProgress(ld_bar_transcript,100); 
-                            console.log("Feedback: " + feedback_list[0]);
-                            is_loading=false;
-                            setLoadingProgress(ld_bar_transcript,0); 
-                            load_status="";
-                        }}
-                    > 
-                        <img src="./logos/magnifying-glass-for-search-3-svgrepo-com.svg" alt="Auto-detect Feedback" class="logo">
-                        Auto-detect <br> Feedback
-                    </button>
-                    <button class="action-button"
-                        disabled={!recording || !recording.transcript_list || is_loading}
-                        on:click={() => addFeedback("positive")}
-                    > 
-                        <img src="./logos/highlight-green-svgrepo-com.svg" alt="Highlight Positive Feedback" class="logo">
-                        Highlight <br> Positive
-                    </button>
-                    <button class="action-button"
-                        disabled={!recording || !recording.transcript_list || is_loading}
-                        on:click={() => addFeedback("critical")}
-                    > 
-                        <img src="./logos/highlight-red-svgrepo-com.svg" alt="Highlight Critical Feedback" class="logo">
-                        Highlight <br> Critical 
-                    </button>
-                    <button class="action-button"
-                        disabled={!recording || !recording.transcript_list || is_loading}
-                        on:click={() => removeFeedback()}
-                    > 
-                        <img src="./logos/erase-svgrepo-com.svg" alt="De-highlight Feedback" class="logo">
-                        Remove <br> Feedback
-                    </button>
+                <div class="centered" style="height: 100%; width: 100%;">
+                    <div class="row centered spaced">
+                        <button class = "action-button" 
+                            disabled={!recording || !recording.transcript_list || is_loading}
+                            on:click={async () => {
+                                if(feedback_list.length > 0) {
+                                    let confirm = window.confirm("Auto-detecting again will clear all feedback highlighted. Do you want to proceed?");
+                                    if(!confirm) {
+                                        return;
+                                    }
+                                }
+    
+    
+                                is_loading=true;
+                                progress=0;
+                                feedback_list=[];
+    
+                                let list = recording.transcript_list;
+                                // Divide list into 4 equally sized chunks.
+                                let chunk_size = Math.ceil(list.length / 4);
+                                let chunk1 = list.slice(0, chunk_size);
+                                let chunk2 = list.slice(chunk_size, 2 * chunk_size);
+                                let chunk3 = list.slice(2 * chunk_size, 3 * chunk_size);
+                                let chunk4 = list.slice(3 * chunk_size, list.length);
+                                let chunks=[chunk1, chunk2, chunk3, chunk4];
+    
+                                load_status="Detecting feedback in transcript ...";
+                                for(let i=0; i < chunks.length; i++) {
+                                    let thing = await autoDetectFeedback(chunks[i]);
+                                    feedback_list = feedback_list.concat(thing);
+                                    progress = (i+1) * 20;
+                                    await pause(250); 
+                                }
+                                feedback_list=feedback_list;
+                                console.log(feedback_list);
+                                for(let j = 0; j < feedback_list.length; j++) {
+                                    feedback_list[j].id = j+1; // Assign unique id to each feedback
+                                    let reference_id = feedback_list[j].dialogue_id;
+                                    let excerpt = findExcerptByID(recording.transcript_list,reference_id);
+                                    feedback_list[j].excerpt_reference=excerpt;
+                                }
+                                feedback_list=feedback_list;
+                                load_status="Highlighting feedback ..."
+                                autoHighlightFeedback(feedback_list);
+                                await pause(500); 
+                                progress=100; 
+                                console.log("Feedback: " + feedback_list[0]);
+                                is_loading=false;
+                                progress=0; 
+                                load_status="";
+                            }}
+                        > 
+                            <img src="./logos/magnifying-glass-for-search-3-svgrepo-com.svg" alt="Auto-detect Feedback" class="logo">
+                            Auto-detect <br> Feedback
+                        </button>
+                        <button class="action-button"
+                            disabled={!recording || !recording.transcript_list || is_loading}
+                            on:click={() => addFeedback("positive")}
+                        > 
+                            <img src="./logos/highlight-green-svgrepo-com.svg" alt="Highlight Positive Feedback" class="logo">
+                            Highlight <br> Positive
+                        </button>
+                        <button class="action-button"
+                            disabled={!recording || !recording.transcript_list || is_loading}
+                            on:click={() => addFeedback("critical")}
+                        > 
+                            <img src="./logos/highlight-red-svgrepo-com.svg" alt="Highlight Critical Feedback" class="logo">
+                            Highlight <br> Critical 
+                        </button>
+                        <button class="action-button"
+                            disabled={!recording || !recording.transcript_list || is_loading}
+                            on:click={() => removeFeedback()}
+                        > 
+                            <img src="./logos/erase-svgrepo-com.svg" alt="De-highlight Feedback" class="logo">
+                            Remove <br> Feedback
+                        </button>
+                    </div>
                 </div>
+                
             </div>
         </div>
     </div>
@@ -868,7 +971,7 @@
 
     #transcript-area {
         width:100%;
-        height:80%;
+        height:72%;
         overflow-y: auto;
     }
 
@@ -888,7 +991,7 @@
 
     #transcript-buttons-area {
         width:100%;
-        height:20%;
+        height:28%;
     }
 
     #capture-feedback-panel {
@@ -953,19 +1056,6 @@
         cursor: pointer;
     }
 
-    .overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.75); /* Semi-transparent black */
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        color: white;
-        font-size: 1.5rem;
-        z-index: 3;
-    }
+    
 
 </style>

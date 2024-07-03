@@ -1,7 +1,8 @@
 <script>
     import { prevent_default } from 'svelte/internal';
 
-    import {timeToSeconds, seekTo, focusOnFeedback} from '../utils.js';
+    import {timeToSeconds, seekTo, focusOnFeedback, setLoadingProgress, pause} from '../utils.js';
+    import LoadingBar from './LoadingBar.svelte';
 
     export let feedback_list;
     export let recording; 
@@ -34,6 +35,8 @@
 
     let is_loading=false; 
     let load_status = "";
+    let progress= 0; 
+    let ld_bar_chatbot; 
 
     async function convertImageToBase64(file) {
         return new Promise((resolve, reject) => {
@@ -137,6 +140,13 @@
     }
 
     async function sendMessage(inputMessage,  context=null) {
+
+        if(is_loading) {
+            alert("Please wait for the current message to be processed.");
+            return;
+        }
+
+        is_loading=true; 
         if(inputMessage.trim() === "") {
             alert("Please enter a message.");
             return;
@@ -158,10 +168,14 @@
         };
 
         if(selected_image) {
+            load_status = "Uploading image...";
+            progress=30; 
             let image_base64 = await convertImageToBase64(selected_image);
             body["image_data"] = image_base64;
         }
 
+        load_status = "Thinking...";
+        progress=50;
         const response = await fetch("/message_chatbot", {
             method: "POST",
             headers: {
@@ -174,11 +188,17 @@
         }
         const json = await response.json();
         let chatbot_response = json["chatbot_response"];
+
+        load_status="Done!"
+        progress=100;
+        await pause(1200);
         
         chatbot_messages.push({role: "assistant", content: chatbot_response});
         chatbot_messages = chatbot_messages;
         feedback_list = feedback_list;
-        console.log(feedback_list)
+
+        is_loading=false;
+        progress=0;
     }
 
     function addContext(feedback) {
@@ -389,17 +409,11 @@
                                 </div>
                             {/if}
                         {/each}
-                        <!-- WIP -->
-                        <!-- <div class="assistant padded" style="height:50%;">
+                        <div class="assistant padded column" class:invisible={is_loading===false}>
                             <p> <strong> assistant: </strong>  </p>
-                            <div id="ld-bar-chatbot" class="ldBar centered column" data-preset="bubble" data-value=50 style="width:100%; height: 80%; z-index: 3;">
-                                hello 
-                            </div>
-                        </div> -->
-                        <div style="height: 20px; width: 100%; background-color:white; color:white; cursor: default;"> 
-                            <p>Lorem ipsum dolor sit amet. Eos libero voluptatem sit excepturi rerum vel porro odio est eligendi voluptatibus. At mollitia quam ea dolorum quae aut nemo ipsum est asperiores quibusdam est voluptatem accusamus. Ut eligendi porro quo autem illum non voluptatem rerum et nobis nisi est molestiae facilis quo magni perferendis.
-                            Ea Quis molestiae cum minus consequatur At velit internos et omnis neque qui nihil consequatur et acc</p>
-                        </div> 
+                            <LoadingBar bind:progress={progress} bind:status={load_status} />
+                        </div>
+                        <div style="height: 20%; width: 100%; background-color:white; color:white; cursor: default;"></div> 
                     </div>
 
                     <div id="chatbot-actions" class="column padded spaced centered">
@@ -487,7 +501,7 @@
                             </div>
                             
                             <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, context)}"  placeholder="Type your message here..." id="textarea"></textarea>
-                            <button class="action-button centered column" on:click|preventDefault={async () => { 
+                            <button class="action-button centered column" disabled={is_loading} on:click|preventDefault={async () => { 
                                     await sendMessage(inputMessage,  context);
                                     inputMessage = "";
                                 }}>
@@ -691,6 +705,7 @@
         height: 100%;
         width: auto; 
         border: 0 none;
+        z-index: 2;
     }
 
     span.clickable {
