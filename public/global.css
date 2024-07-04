@@ -116,6 +116,18 @@ main{
 	opacity: 0;
 }
 
+.gone {
+	display: none;
+
+}
+
+.action-button{
+	height: 100%;
+	width: auto; 
+	border: 0 none;
+	z-index: 2;
+}
+
 .action-icon {
 	height: 3rem;
 	width: 3rem;
