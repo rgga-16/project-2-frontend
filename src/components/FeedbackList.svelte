@@ -1,7 +1,7 @@
 <script>
     import { prevent_default } from 'svelte/internal';
 
-    import {timeToSeconds, seekTo, focusOnFeedback, setLoadingProgress, pause} from '../utils.js';
+    import {seekTo, focusOnFeedback, logAction, pause} from '../utils.js';
     import LoadingBar from './LoadingBar.svelte';
 
     export let feedback_list;
@@ -217,8 +217,9 @@
         <div class="tabbed-area bordered">
             <div class="tab-header" >
                 {#each left_panel_tabs as tab, i}
-                    <button class="tab" on:click={()=>{
+                    <button class="tab" on:click={async  ()=>{
                             active_left_tab=i;
+                            await logAction("FeedbackList: Switched left panel tab", left_panel_tabs[active_left_tab]);
                         }} 
                         class:active={i===active_left_tab} class:right-bordered={i<left_panel_tabs.length-1} >{tab}</button>
                 {/each}
@@ -232,7 +233,7 @@
                             </span>
                             <span  class="centered row spaced feedback-col">
                                 <strong>Feedback</strong>
-                                <button class="action-button" on:click={() => sortFeedbackList('quote')}>
+                                <button class="action-button" on:click={async () => {sortFeedbackList('quote'); await logAction("FeedbackList: Sorted feedback", 'quote')}}>
                                     {#if sortAscending && sortKey==='quote'}
                                         <img style="height: 1rem; width: 1rem;" src="./logos/ascending-sort-svgrepo-com.svg" alt="Sort ascending" class="mini-icon">
                                     {:else}
@@ -242,7 +243,7 @@
                             </span>
                             <span class="centered row spaced speaker-col">
                                 <strong>Speaker</strong>
-                                <button class="action-button" on:click={() => sortFeedbackList('speaker')}>
+                                <button class="action-button" on:click={async () => {sortFeedbackList('speaker'); await logAction("FeedbackList: Sorted feedback", 'speaker')}}>
                                     {#if sortAscending && sortKey==='speaker'}
                                         <img style="height: 1rem; width: 1rem;" src="./logos/ascending-sort-svgrepo-com.svg" alt="Sort ascending" class="mini-icon">
                                     {:else}
@@ -255,7 +256,7 @@
                             </span>
                             <span  class="centered row spaced done-col">
                                 <strong>Done?</strong>
-                                <button class="action-button" on:click={() => sortFeedbackList('done')}>
+                                <button class="action-button" on:click={async () => {sortFeedbackList('done'); await logAction("FeedbackList: Sorted feedback", 'done')}}>
                                     <img style="height: 1rem; width: 1rem;" src={sortAscending && sortKey==='done' ? "./logos/ascending-sort-svgrepo-com.svg" :  "./logos/descending-sort-svgrepo-com.svg"} alt={sortAscending && sortKey==='done' ? "Sort ascending" : "Sort descending"} class="mini-icon">
                                 </button>
                             </span>
@@ -263,11 +264,12 @@
                         {#each feedback_list as feedback, i}
                             {#if feedback.type==="critical"}
                                 <div class="feedback-row row bordered padded" class:done={feedback.done} class:selected={feedback===selected_feedback} 
-                                    on:click={(event) => {
+                                    on:click={async (event) => {
                                         selectFeedback(feedback, event);
                                         // context=null;
                                         // addContext(feedback);
                                         focusOnFeedback(feedback);
+                                        await logAction("FeedbackList: Selected feedback", feedback);
                                     }}
                                 >
                                     <span class="id-col">
@@ -276,16 +278,34 @@
                                     <div class="column feedback-col" >
                                         <span  class="">
                                             <span class="timestamp" on:click={
-                                                () => {
+                                                async () => {
                                                     active_right_tab = 0;
-                                                    seekTo(feedback.excerpt_reference.start_timestamp, mediaPlayer);
+                                                    if("excerpt_reference" in feedback) {
+                                                        if("start_timestamp" in feedback.excerpt_reference) {
+                                                            seekTo(feedback.excerpt_reference.start_timestamp, mediaPlayer);
+                                                            await logAction("FeedbackList: Seeked to timestamp", feedback.excerpt_reference.start_timestamp);
+                                                        }
+                                                    }
                                                 }}>
-                                                [{feedback.excerpt_reference.start_timestamp}]
+                                                {#if "excerpt_reference" in feedback} 
+                                                    {#if "start_timestamp" in feedback.excerpt_reference}
+                                                        [{feedback.excerpt_reference.start_timestamp}]
+                                                    {:else}
+                                                        [00:00:00]
+                                                    {/if}
+                                                {:else}
+                                                    [00:00:00]  
+                                                {/if}
                                             </span> 
                                             {#if feedback.positivised_quote && feedback.show_paraphrased}
-                                                <strong>(Paraphrased Feedback)</strong> "{feedback.positivised_quote}" <span class="clickable" on:click={() => showParaphrasedQuote(feedback, false)}>(View original quote)</span>
+                                                <strong>(Paraphrased Feedback)</strong> "{feedback.positivised_quote}" 
+                                                <span class="clickable" 
+                                                on:click={async () => {showParaphrasedQuote(feedback, false); await logAction("FeedbackList: Show original quote", feedback.original_quote)}}>
+                                                (View original quote)</span>
                                             {:else}
-                                                "{feedback.quote}" {#if feedback.positivised_quote && !feedback.show_paraphrased } <span class="clickable" on:click={() => showParaphrasedQuote(feedback, true)}>(View paraphrased quote)</span> {/if}
+                                                "{feedback.quote}" {#if feedback.positivised_quote && !feedback.show_paraphrased } 
+                                                <span class="clickable" 
+                                                on:click={async () => {showParaphrasedQuote(feedback, true); await logAction("FeedbackList: Show paraphrased quote", feedback.positivised_quote)}}>(View paraphrased quote)</span> {/if}
                                             {/if}
                                         </span>
                                         <!-- <span>
@@ -310,22 +330,29 @@
                                         </span> -->
                                     </div>
                                     <span  class="centered speaker-col">
-                                        {feedback.speaker}
+                                        {feedback.speaker ? feedback.speaker : "Unknown"}
                                     </span>
                                     <div id="feedback-buttons"  class="row centered spaced actions-col">
                                         <button class="action-button" on:click={async () => { 
                                             feedback.positivised_quote = await paraphrasePositively(feedback.quote, feedback.excerpt_reference.dialogue);
                                             showParaphrasedQuote(feedback, true);
                                             feedback_list = feedback_list;
+                                            await logAction("FeedbackList: Positivize Quote", feedback);
                                         }}>
                                             <img src="./logos/ai-positive-paraphrase.png" alt="Paraphrase positively" class="action-icon">
                                             Positivize
                                         </button>
-                                        <button class="action-button centered column" on:click={() => addContext(feedback)}>
+                                        <button class="action-button centered column" on:click={async () => {
+                                            addContext(feedback);
+                                            await logAction("FeedbackList: Add as context", context);
+                                        }}>
                                             <img src="./logos/add-ellipse-svgrepo-com.svg" alt="Add feedback as context" class="action-icon">
                                             Add Context
                                         </button>
-                                        <button class="action-button" on:click={() => removeFeedback(feedback)} >
+                                        <button class="action-button" on:click={async () => {
+                                            removeFeedback(feedback);
+                                            await logAction("FeedbackList: Remove feedback", feedback);
+                                        }}>
                                             <img src="./logos/delete-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
                                             Delete
                                         </button>
@@ -343,9 +370,10 @@
                             {#if feedback.type==="positive"}
                                 <div class="positive-feedback-note" class:selected={feedback===selected_feedback} 
                                 on:click={
-                                (event) => {
+                                async (event) => {
                                     selectFeedback(feedback, event);
                                     focusOnFeedback(feedback);
+                                    await logAction("FeedbackList: Selected feedback", feedback);
                                 }}>
                                     <p>"{feedback.quote}"</p>
                                     <br>
@@ -365,7 +393,7 @@
         <div class="tabbed-area bordered">
             <div class="tab-header">
                 {#each right_panel_tabs as tab, i}
-                    <button class="tab" on:click={()=>active_right_tab=i} class:active={i===active_right_tab} class:right-bordered={i<right_panel_tabs.length-1} >{tab}</button>
+                    <button class="tab" on:click={async ()=>{active_right_tab=i; await logAction("FeedbackList: Switched right panel tab", right_panel_tabs[active_right_tab]);}} class:active={i===active_right_tab} class:right-bordered={i<right_panel_tabs.length-1} >{tab}</button>
                 {/each}
             </div>
             <div class="tab-content padded column spaced " >
@@ -387,7 +415,7 @@
                         {#if recording && recording.transcript}
                             <p class="spaced padded"> 
                                 {#each recording.transcript_list as excerpt, i}
-                                    <span class="timestamp" on:click={() => seekTo(excerpt.start_timestamp, mediaPlayer)}>[{excerpt.start_timestamp}]</span> - <span class="timestamp" on:click={() => seekTo(excerpt.end_timestamp, mediaPlayer)}>[{excerpt.end_timestamp}]</span>
+                                    <span class="timestamp" on:click={async () => {seekTo(excerpt.start_timestamp, mediaPlayer); await logAction("FeedbackList: Seek to start timestamp", excerpt.start_timestamp)}}>[{excerpt.start_timestamp}]</span> - <span class="timestamp" on:click={async () => {seekTo(excerpt.end_timestamp, mediaPlayer); await logAction("FeedbackList: Seek to end timestamp", excerpt.end_timestamp)}}>[{excerpt.end_timestamp}]</span>
                                     <br>
                                     {excerpt.speaker ? excerpt.speaker+":" : ""}  
                                     <span id={excerpt.id}>
@@ -423,9 +451,10 @@
                                 {#if context}
                                     <!-- {#each contexts as context} -->
                                     <div class="suggested-message row "> 
-                                        <span>{context.quote.slice(0, 10)}... </span>
+                                        <span>{context.quote.slice(0, 20)}... </span>
                                         <button on:click|preventDefault={
-                                            () => {
+                                            async () => {
+                                                await logAction("FeedbackList: Removed context", context);
                                                 context=null;
                                             }}>
                                             <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove context" class="mini-icon">
@@ -441,6 +470,7 @@
                                 <div class="suggested-message" on:click|preventDefault={
                                         async () => {
                                             await sendMessage("Can you explain the following feedback?",context);
+                                            await logAction("FeedbackList: Sent message", ["Explain feedback", context, image_url]);
                                         }
                                     } >
                                     Explain feedback.
@@ -448,6 +478,7 @@
                                 <div class="suggested-message" on:click|preventDefault={
                                         async () => {
                                             await sendMessage("Can you brainstorm the tasks to do to address the following feedback?",context);
+                                            await logAction("FeedbackList: Sent message", ["Brainstorm actions", context, image_url]);
                                         }
                                     }>
                                     Brainstorm actions.
@@ -460,9 +491,11 @@
                                     <div class="row" style="width:100%; height:100%;">
                                         <img src={image_url} alt="Visual context" style="width:100%; height:100%;">
                                         <button on:click|preventDefault={
-                                            () => {
+                                            async () => {
+                                                await logAction("FeedbackList: Removed image", image_url);
                                                 image_url = null;
                                                 selected_image = null;
+
                                             }}>
                                             <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove context" class="mini-icon">
                                         </button>
@@ -489,6 +522,7 @@
                                     on:change = { async () => {
                                         image_files = image_input.files;
                                         [image_url,selected_image] = await handleImageUpload(image_files);
+                                        await logAction("FeedbackList: Uploaded image", image_url);
                                     }}
                                 />
                                 <button class="action-button centered column" on:click|preventDefault={async () => { 
@@ -503,6 +537,7 @@
                             <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, context)}"  placeholder="Type your message here..." id="textarea"></textarea>
                             <button class="action-button centered column" disabled={is_loading} on:click|preventDefault={async () => { 
                                     await sendMessage(inputMessage,  context);
+                                    await logAction("FeedbackList: Sent message", [inputMessage, context, image_url]);
                                     inputMessage = "";
                                 }}>
                                 <img src="./logos/send-svgrepo-com.svg" alt="Send" class="action-icon">
@@ -701,12 +736,7 @@
         border: 2px dashed;   
     }
 
-    .action-button{
-        height: 100%;
-        width: auto; 
-        border: 0 none;
-        z-index: 2;
-    }
+    
 
     span.clickable {
         color: blue;

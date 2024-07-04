@@ -7,8 +7,22 @@ export async function saveConversationHistory(conversation_history) {
 }
 
 export async function logAction(action, data) {
-    console.log("Action: " + action);
-    console.log(data);
+    // console.log("Action: " + action);
+    // console.log(data);
+
+    // Send data to server
+    const response = await fetch("/log_action", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({action: action, data: data})
+    });
+    if(!response.ok) {
+        throw new Error("Failed to log action");
+    }
+    const json = await response.json();
+    console.log(json["message"]);
 }
 
 export function setLoadingProgress(loadbar, value) {

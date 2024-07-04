@@ -1,11 +1,12 @@
 <script>
     import {onMount} from 'svelte';
     import LoadingBar from './LoadingBar.svelte';
-    import {timeToSeconds, seekTo, focusOnFeedback, setLoadingProgress, pause} from '../utils.js';
+    import {seekTo, focusOnFeedback, logAction, pause} from '../utils.js';
     
     export let recording;
     export let feedback_list;
 
+    let to_transcribe=false;
     let feedback_idx = 0; 
 
     let mediaPlayer; 
@@ -273,7 +274,7 @@
                 console.log(file.type);
                 if(file.type.includes('video')) {
                     if(recording || "video" in recording || "audio" in recording || "transcript_list" in recording || feedback_list.length > 0) {
-                        if(recording.video || recording.audio || recording.transcript_list.length > 0) {
+                        if(recording.video || recording.audio || recording.transcript_list) {
                             let confirm = window.confirm("Uploading a new video will overwrite this recording and clear highlighted feedback. Do you want to proceed?");
                             if(!confirm) {
                                 return;
@@ -319,7 +320,7 @@
                     // await incrementRecordNumber();
                 } else if(file.type.includes('audio')) {
                     if(recording || "audio" in recording || "video" in recording || "transcript_list" in recording || feedback_list.length > 0) {
-                        if(recording.audio || recording.video || recording.transcript_list.length > 0) {
+                        if(recording.audio || recording.video || recording.transcript_list) {
                             let confirm = window.confirm("Uploading a new audio will overwrite this recording and clear highlighted feedback. Do you want to proceed?");
                             if(!confirm) {
                                 return;
@@ -389,7 +390,7 @@
                 if(file.name.endsWith('.srt')) {
 
                     if(recording || "transcript" in recording || "transcript_list" in recording || feedback_list.length > 0) {
-                        if(recording.transcript || recording.transcript_list.length > 0) {
+                        if(recording.transcript || recording.transcript_list) {
                             let confirm = window.confirm("Uploading a new transcript will overwrite the current transcript and clear highlighted feedback. Do you want to proceed?");
                             if(!confirm) {
                                 return;
@@ -523,6 +524,10 @@
 
     function addFeedback(type) {
         const selection = window.getSelection().toString();
+        if(selection.trim() === "") {
+            alert("Please highlight text in the transcript with your mouse to add as feedback.");
+            return "Error: No text highlighted";
+        }
         if(selection) {
             let feedback = {quote: selection, type: type, done:false, speaker:null, dialogue_id:null};
             let excerpt_reference = findExcerptByQuote(recording.transcript_list, selection);
@@ -531,7 +536,7 @@
             if(!excerpt_reference) {
                 console.log("Error: Corresponding transcript excerpt not found")
                 alert("Error: Corresponding transcript excerpt not found. Feedback not added.");
-                return;
+                return "Error: Corresponding transcript excerpt not found for selection: " + selection;
             }
             feedback.id = feedback_list.length+1;
             feedback.dialogue_id = excerpt_reference.id;
@@ -544,8 +549,10 @@
             recording.transcript_list = recording.transcript_list;
 
             autoHighlightFeedback([feedback]);
+            return feedback;
         } else {
             alert("Please highlight text in the transcript with your mouse to add as feedback.");
+            return "Error: No text highlighted";
         }
     }
 
@@ -553,8 +560,8 @@
     function removeFeedback() {
         const selection = window.getSelection().toString();
         if(selection.trim() === "") {
-            alert("Please highlight the feedback you want to remove using your cursor.");
-            return;
+            alert("Please highlight the feedback you want to remove using your mouse.");
+            return "Error: No text highlighted";
         }
         if(selection) {
             for(let i=0; i < feedback_list.length; i++) {
@@ -568,10 +575,12 @@
                     feedback_list=feedback_list;
 
                     deHighlightFeedback(dialogue_id, feedback_quote);
-                    break;
+                    return feedback;
                 }
             }
+            
         }
+        return "Error: Feedback not found for selection: " + selection;
     }
 
     function deHighlightFeedback(dialogue_id, feedback_quote) {
@@ -657,12 +666,12 @@
 
     
 
-    // onMount(async () => {
-    //     if(recording && recording.transcript_list) {
-    //         await embedTranscriptList(recording.transcript_list);
-    //         console.log("Transcript list embedded");
-    //     }
-    // });
+    onMount(async () => {
+        if(recording && recording.transcript_list) {
+            await embedTranscriptList(recording.transcript_list);
+            console.log("Transcript list embedded");
+        }
+    });
 </script>
 
 <div div class="row spaced" id="feedback-selector-page">
@@ -682,23 +691,25 @@
                 {:else}
                     <span> No feedback moments highlighted. </span>
                 {/if}
-                <button disabled={!feedback_list || feedback_list.length <= 0} on:click={() => {
+                <button disabled={!feedback_list || feedback_list.length <= 0} on:click={async () => {
                     if(feedback_idx > 0) {
                         feedback_idx--;
                     } else {
                         feedback_idx = feedback_list.length - 1;
                     }
                     focusOnFeedback(feedback_list[feedback_idx]);
+                    await logAction("FeedbackSelector: Traverse to previous feedback", feedback_list[feedback_idx]);
                 }}> 
                     <img src="./logos/up-arrow-5-svgrepo-com.svg" alt="Prev feedback" class="logo" style="width: 1.5rem; height: 1.5rem;">
                 </button>
-                <button disabled={!feedback_list || feedback_list.length <= 0} on:click={() => {
+                <button disabled={!feedback_list || feedback_list.length <= 0} on:click={async () => {
                     if(feedback_idx < feedback_list.length - 1) {
                         feedback_idx++;
                     } else {
                         feedback_idx = 0;
                     }
                     focusOnFeedback(feedback_list[feedback_idx]);
+                    await logAction("FeedbackSelector: Traverse to next feedback", feedback_list[feedback_idx]);
                 }}> 
                     <img src="./logos/down-arrow-5-svgrepo-com.svg" alt="Next feedback" class="logo" style="width: 1.5rem; height: 1.5rem;">  
                 </button>
@@ -707,7 +718,16 @@
                 <p class="padded"> 
                     {#each recording.transcript_list as excerpt, i}
                         <div class="spaced">
-                            <span class="timestamp" on:click={() => seekTo(excerpt.start_timestamp, mediaPlayer)}>[{excerpt.start_timestamp}]</span> - <span class="timestamp" on:click={() => seekTo(excerpt.end_timestamp, mediaPlayer)}>[{excerpt.end_timestamp}]</span><br>
+                            <span class="timestamp" on:click={async () => {
+                                seekTo(excerpt.start_timestamp, mediaPlayer); 
+                                await logAction("FeedbackSelector: Seeked to start timestamp", excerpt.start_timestamp);
+                            }}>[{excerpt.start_timestamp}]</span> 
+                            - 
+                            <span class="timestamp" on:click={async () => {
+                                seekTo(excerpt.end_timestamp, mediaPlayer);
+                                await logAction("FeedbackSelector: Seeked to end timestamp", excerpt.end_timestamp);
+                            }}>[{excerpt.end_timestamp}]</span>
+                            <br>
                             {excerpt.speaker ? excerpt.speaker+":" : ""}  
                             <span id={excerpt.id}>
                                 {@html excerpt.dialogue} 
@@ -729,33 +749,37 @@
                     <div class="column centered">
                         <span >Screen record your discussion</span>
                         <div class="row spaced">
-                            <button class="action-button" on:click={() => {
+                            <button class="action-button" on:click={async () => {
                                 if("video" in recording || "audio" in recording || "transcript_list" in recording || feedback_list.length > 0) {
-                                    if(recording.video || recording.audio || recording.transcript_list.length > 0 ) {
+                                    if(recording.video || recording.audio || recording.transcript_list ) {
                                         let confirm = window.confirm("Starting a new recording will clear all highlighted feedback and overwrite the existing recording. Do you want to proceed?");
                                         if(!confirm) {
                                             return;
                                         }
                                     }
                                 }
-
-                                
                                 feedback_list=[]; 
                                 startRecording();
-
+                                await logAction("FeedbackSelector: Start recording", null);
                             }} disabled={is_recording || is_paused} >
                                 <img src="./logos/record-video-svgrepo-com.svg" alt="Start recording" class="logo">
                                 Record
                             </button>
                             {#if is_paused}
-                                <button class="action-button" on:click={() => resumeRecording()} disabled={!is_paused}>
+                                <button class="action-button" on:click={async () => {
+                                        resumeRecording(); 
+                                        await logAction("FeedbackSelector: Resume recording", null);
+                                    }} disabled={!is_paused}>
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-play logo" style="border-radius: 50%; padding: 5px; background-color: #fff;">
                                         <polygon points="5 3 19 12 5 21 5 3"></polygon>
                                     </svg>
                                     Resume
                                 </button>
                             {:else}
-                                <button class="action-button" on:click={() => pauseRecording()} disabled={!is_recording || is_paused}>
+                                <button class="action-button" on:click={async () => {
+                                        pauseRecording();
+                                        await logAction("FeedbackSelector: Pause recording", null)
+                                    }} disabled={!is_recording || is_paused}>
                                     <img src="./logos/pause-circle-svgrepo-com.svg" alt="Pause recording" class="logo">
                                     Pause
                                 </button>
@@ -765,6 +789,7 @@
                                     is_loading=true;
                                     await stopRecording();
                                     is_loading=false;
+                                    await logAction("FeedbackSelector: Stop recording", recording);
                                 }}
                                 disabled={!is_recording && !is_paused}>
                                 <img src="./logos/record-video-stop-svgrepo-com.svg" alt="Stop recording" class="logo">
@@ -775,40 +800,43 @@
                     <span>or</span>
                     <div class="column centered spaced">
                         <label for="file_upload" >Upload your own video or audio: </label>
-                        <div class="row centered">
-                            <input bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept="video/*, audio/*"/>
+                        <div class="row centered spaced">
+                            <input style="width: 50%;" bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept="video/*, audio/*"
+                                on:change={async (e) => {
+                                    files = e.target.files;
+                                    await logAction("FeedbackSelector: Select media file", files);
+                                }}
+                            />
+                            
                             <button class="action-button centered column " on:click={async () => {
-                                        // if(feedback_list.length > 0) {
-                                        //     let confirm = window.confirm("Uploading a new file will clear all highlighted feedback. Do you want to proceed?");
-                                        //     if(!confirm) {
-                                        //         return;
-                                        //     }
-                                        // }
                                         is_loading=true;
-                                        
                                         await handleMediaUpload();
                                         is_loading=false;
+                                        await logAction("FeedbackSelector: Upload media", recording);
                                     }} 
                             disabled={is_loading || !files || files.length===0}> 
                                 <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
                                 Upload file 
                             </button> 
+                            <div class="column centered">
+                                <label for="to-transcribe">Transcribe?</label>
+                                <input id="to-transcribe" type="checkbox" bind:checked={to_transcribe} on:change={async () => {logAction("FeedbackSelector: Check transcribe",to_transcribe)}}/>
+                            </div>
                         </div>
 
                         <label for="file_upload" >Upload your own transcript (in .srt only): </label>
                         <div class="row centered">
-                            <input bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept=" .srt"/>
+                            <input bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept=" .srt"
+                                on:change={async (e) => {
+                                    files = e.target.files;
+                                    await logAction("FeedbackSelector: Select transcript file", files);
+                                }}
+                            />
                             <button class="action-button centered column " on:click={async () => {
-                                        // if(feedback_list.length > 0) {
-                                        //     let confirm = window.confirm("Uploading a new file will clear all highlighted feedback. Do you want to proceed?");
-                                        //     if(!confirm) {
-                                        //         return;
-                                        //     }
-                                        // }
                                         is_loading=true;
-                                        
                                         await handleTranscriptUpload();
                                         is_loading=false;
+                                        await logAction("FeedbackSelector: Upload transcript", recording);
                                     }} 
                             disabled={is_loading || !files || files.length===0}> 
                                 <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
@@ -833,11 +861,8 @@
                                     }
                                 }
     
-    
                                 is_loading=true;
                                 progress=0;
-                                feedback_list=[];
-    
                                 let list = recording.transcript_list;
                                 // Divide list into 4 equally sized chunks.
                                 let chunk_size = Math.ceil(list.length / 4);
@@ -846,7 +871,6 @@
                                 let chunk3 = list.slice(2 * chunk_size, 3 * chunk_size);
                                 let chunk4 = list.slice(3 * chunk_size, list.length);
                                 let chunks=[chunk1, chunk2, chunk3, chunk4];
-    
                                 load_status="Detecting feedback in transcript ...";
                                 for(let i=0; i < chunks.length; i++) {
                                     let thing = await autoDetectFeedback(chunks[i]);
@@ -871,6 +895,7 @@
                                 is_loading=false;
                                 progress=0; 
                                 load_status="";
+                                await logAction("FeedbackSelector: Auto-detect feedback", feedback_list);
                             }}
                         > 
                             <img src="./logos/magnifying-glass-for-search-3-svgrepo-com.svg" alt="Auto-detect Feedback" class="logo">
@@ -878,21 +903,30 @@
                         </button>
                         <button class="action-button"
                             disabled={!recording || !recording.transcript_list || is_loading}
-                            on:click={() => addFeedback("positive")}
+                            on:click={async () => {
+                                let selection = addFeedback("positive");
+                                await logAction("FeedbackSelector: Add positive feedback", selection);
+                            }}
                         > 
                             <img src="./logos/highlight-green-svgrepo-com.svg" alt="Highlight Positive Feedback" class="logo">
                             Highlight <br> Positive
                         </button>
                         <button class="action-button"
                             disabled={!recording || !recording.transcript_list || is_loading}
-                            on:click={() => addFeedback("critical")}
+                            on:click={async () => {
+                                let selection = addFeedback("critical");
+                                await logAction("FeedbackSelector: Add critical feedback", selection);
+                            }}
                         > 
                             <img src="./logos/highlight-red-svgrepo-com.svg" alt="Highlight Critical Feedback" class="logo">
                             Highlight <br> Critical 
                         </button>
                         <button class="action-button"
                             disabled={!recording || !recording.transcript_list || is_loading}
-                            on:click={() => removeFeedback()}
+                            on:click={async () => {
+                                let selection = removeFeedback();
+                                await logAction("FeedbackSelector: Remove feedback", selection);
+                            }}
                         > 
                             <img src="./logos/erase-svgrepo-com.svg" alt="De-highlight Feedback" class="logo">
                             Remove <br> Feedback
