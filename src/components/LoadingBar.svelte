@@ -43,7 +43,7 @@
 </style>
 
 <div class="container column centered spaced">
-    <span class="status-text"> {status} </span>
+    <span class="status-text"> [{progress}%] {status} </span>
     <div class="loading-bar-container">
         <div class="loading-bar-progress" style="width: {progress}%;">
         </div>
