@@ -6,6 +6,8 @@
     export let recording;
     export let feedback_list;
 
+    let tooltip; 
+
     let to_transcribe=false;
     let feedback_idx = 0; 
 
@@ -285,7 +287,7 @@
 
                     let videoSrc = URL.createObjectURL(file);
                     load_status="Uploading video...";
-                    progress=20;
+                    progress= to_transcribe ? 20 : 50;
                     [micPath, videoPath] = await extractAudioFromVideo(file);
                     if(!micPath) {
                         micPath = null;
@@ -294,26 +296,31 @@
                     } 
                     let micSrc = await fetchAudio(micPath);
 
-                    load_status="Transcribing audio (this may take a while) ...";
-                    progress=40;
-                    let transcript = await transcribeMic(micPath);
+                    let transcript=null; 
+                    let transcript_list = null; 
+                    if(to_transcribe) {
+                        load_status="Transcribing audio (this may take a while) ...";
+                        progress=40;
+                        transcript = await transcribeMic(micPath);
 
-                    load_status="Cleaning transcript...";
-                    progress=60;
-                    // load_status="Extracting video frames from transcript timestamps...";
-                    // let timestamp_frames = await extractFrames(videoPath, transcript);
-                    let simplified_transcript = await simplifyTranscript(transcript);
-                    let transcript_list = await convertTranscriptToList(simplified_transcript);
+                        load_status="Cleaning transcript...";
+                        progress=60;
+                        // load_status="Extracting video frames from transcript timestamps...";
+                        // let timestamp_frames = await extractFrames(videoPath, transcript);
+                        transcript = await simplifyTranscript(transcript);
+                        transcript_list = await convertTranscriptToList(transcript);
+                        
+                        load_status="Saving transcript as a database (this may take a while) ... "
+                        progress=80;
+                        await embedTranscriptList(transcript_list);
+                    }
 
-                    load_status="Saving transcript as a database (this may take a while) ... "
-                    progress=80;
-                    await embedTranscriptList(transcript_list);
 
                     load_status="Done!"
                     progress=100;
                     pause(1500);
                     progress=0;
-                    let newRecording = {video: videoSrc, audio: micSrc, transcript: simplified_transcript, transcript_list:transcript_list};
+                    let newRecording = {video: videoSrc, audio: micSrc, transcript: transcript, transcript_list:transcript_list};
                     recording=newRecording;
                     micPath=null;
                     videoPath=null;
@@ -331,7 +338,7 @@
                     let audioSrc = URL.createObjectURL(file);
                     // Save the audio file and get its path
                     load_status="Uploading audio...";
-                    progress=20;
+                    progress= to_transcribe ? 20 : 50;
                     const formData = new FormData();
                     formData.append('audio', file);
                     const response = await fetch('/download_mic', {
@@ -346,25 +353,30 @@
                     let json = await response.json();
                     micPath = json["filepath"];
 
-                    // Transcribe the audio
-                    load_status="Transcribing audio (this may take a while) ...";
-                    progress=40;
-                    let transcript = await transcribeMic(micPath);
+                    let transcript=null; 
+                    let transcript_list = null; 
 
-                    load_status="Cleaning transcript...";
-                    progress=60;
-                    let simplified_transcript = await simplifyTranscript(transcript);
-                    let transcript_list = await convertTranscriptToList(simplified_transcript);
+                    if(to_transcribe) {
+                        // Transcribe the audio
+                        load_status="Transcribing audio (this may take a while) ...";
+                        progress=40;
+                        transcript = await transcribeMic(micPath);
 
-                    load_status="Saving transcript as a database (this may take a while) ... "
-                    progress=80;
-                    await embedTranscriptList(transcript_list);
+                        load_status="Cleaning transcript...";
+                        progress=60;
+                        transcript = await simplifyTranscript(transcript);
+                        transcript_list = await convertTranscriptToList(transcript);
+
+                        load_status="Saving transcript as a database (this may take a while) ... "
+                        progress=80;
+                        await embedTranscriptList(transcript_list);
+                    }
 
                     load_status="Done!"
                     progress=100; 
                     await pause(1500);
                     progress=0;
-                    let newRecording = {video: null, audio: audioSrc, transcript: simplified_transcript, transcript_list:transcript_list};
+                    let newRecording = {video: null, audio: audioSrc, transcript: transcript, transcript_list:transcript_list};
                     recording = newRecording;
                     micPath=null;
                     videoPath=null;
@@ -408,11 +420,10 @@
                         console.log(text);
                         load_status="Cleaning transcript...";
                         progress=30;
-                        let simplified_transcript = await simplifyTranscript(text);
+                        let transcript = await simplifyTranscript(text);
                         await pause(1500); 
 
-                        console.log(simplified_transcript)
-                        let transcript_list = await convertTranscriptToList(simplified_transcript); 
+                        let transcript_list = await convertTranscriptToList(transcript); 
                         console.log(transcript_list);
                         load_status="Saving transcript as a database (this may take a while) ... "
                         progress=60;
@@ -422,10 +433,10 @@
                         progress=100;
                         await pause(500); 
                         progress=0;
-                        let newRecording = {video: null, audio: null, transcript: simplified_transcript, transcript_list:transcript_list};
+                        let newRecording = {video: null, audio: null, transcript: transcript, transcript_list:transcript_list};
                         if(recording && (("video" in recording && recording.video) || ("audio" in recording && recording.audio))) {
                             recording.transcript_list = transcript_list;
-                            recording.transcript=simplified_transcript;
+                            recording.transcript=transcript;
                             recording=recording;
                         } else {
                             recording = newRecording;
@@ -807,6 +818,19 @@
                                     await logAction("FeedbackSelector: Select media file", files);
                                 }}
                             />
+
+                            <div class="column centered">
+                                <label for="to-transcribe">
+                                    Transcribe 
+                                    <a class="link" style="color: blue;"
+                                    on:mouseover={() => {tooltip.style.visibility = 'visible';}} 
+                                    on:mouseout={() => {tooltip.style.visibility = 'hidden';}}>
+                                        (?)
+                                    </a>
+                                </label>
+                                <span bind:this={tooltip} class="tooltip">Checking this will automatically transcribe the video/audio.</span>
+                                <input id="to-transcribe" type="checkbox" bind:checked={to_transcribe} on:change={async () => {logAction("FeedbackSelector: Check transcribe",to_transcribe)}}/>
+                            </div>
                             
                             <button class="action-button centered column " on:click={async () => {
                                         is_loading=true;
@@ -818,10 +842,7 @@
                                 <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
                                 Upload file 
                             </button> 
-                            <div class="column centered">
-                                <label for="to-transcribe">Transcribe?</label>
-                                <input id="to-transcribe" type="checkbox" bind:checked={to_transcribe} on:change={async () => {logAction("FeedbackSelector: Check transcribe",to_transcribe)}}/>
-                            </div>
+                            
                         </div>
 
                         <label for="file_upload" >Upload your own transcript (in .srt only): </label>
