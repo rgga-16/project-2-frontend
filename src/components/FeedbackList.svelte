@@ -3,9 +3,19 @@
 
     import {seekTo, focusOnFeedback, logAction, pause} from '../utils.js';
     import LoadingBar from './LoadingBar.svelte';
+    import Range from './Range.svelte';
 
     export let feedback_list;
     export let recording; 
+
+    let show_chatbot_settings=false;
+    let chatbot_models = {
+        "GPT-4o":"gpt-4o",
+        "Interior Designer GPT":"ft:gpt-3.5-turbo-0125:im-lab:int-des-full:9b2qf12W"
+    }
+    let selected_chatbot="GPT-4o";
+    let chatbot_temperature = 0.0;
+    let chatbot_max_output_tokens = 256; 
 
     let mediaPlayer;
     let inputMessage = "";
@@ -164,7 +174,10 @@
 
         let body = {
             message: inputMessage,
-            image_data: null
+            image_data: null,
+            max_output_tokens: chatbot_max_output_tokens,
+            temperature: chatbot_temperature,
+            model: chatbot_models[selected_chatbot]
         };
 
         if(selected_image) {
@@ -396,154 +409,241 @@
                     <button class="tab" on:click={async ()=>{active_right_tab=i; await logAction("FeedbackList: Switched right panel tab", right_panel_tabs[active_right_tab]);}} class:active={i===active_right_tab} class:right-bordered={i<right_panel_tabs.length-1} >{tab}</button>
                 {/each}
             </div>
-            <div class="tab-content padded column spaced " >
+            <div class="tab-content column" >
                 {#if active_right_tab===0}
-                    <div id="media-player-area" class="bordered">
-                        {#if recording && recording.video}
-                            <video bind:this={mediaPlayer} src={recording.video} controls style="width: 100%; height: 100%;">
-                                <track kind="captions" src="blank.vtt" srclang="en">
-                            </video>
-                        {:else if recording && recording.audio}
-                            <audio bind:this={mediaPlayer} src={recording.audio} controls style="width: 100%; height: 100%;"></audio>
-                        {:else}
-                            <video bind:this={mediaPlayer} src="video.mp4" controls style="width: 100%; height: 100%;">
-                                <track kind="captions" src="blank.vtt" srclang="en">
-                            </video>
-                        {/if}
-                    </div>
-                    <div id="transcript-area" class="column bordered spaced">
-                        {#if recording && recording.transcript}
-                            <p class="spaced padded"> 
-                                {#each recording.transcript_list as excerpt, i}
-                                    <span class="timestamp" on:click={async () => {seekTo(excerpt.start_timestamp, mediaPlayer); await logAction("FeedbackList: Seek to start timestamp", excerpt.start_timestamp)}}>[{excerpt.start_timestamp}]</span> - <span class="timestamp" on:click={async () => {seekTo(excerpt.end_timestamp, mediaPlayer); await logAction("FeedbackList: Seek to end timestamp", excerpt.end_timestamp)}}>[{excerpt.end_timestamp}]</span>
-                                    <br>
-                                    {excerpt.speaker ? excerpt.speaker+":" : ""}  
-                                    <span id={excerpt.id}>
-                                        {@html excerpt.dialogue} 
-                                    </span> <br><br>
-                                {/each}
-                            </p>
-                        {/if}
-                    </div>
-                {:else if active_right_tab===1}
-                    <div id="chatbot-messages" class="column spaced bordered">
-                        <div class="assistant padded">
-                            <p> <strong> assistant: </strong> Hello! How can I help you today? </p>
-                        </div>
-                        {#each chatbot_messages as message} 
-                            {#if message.role != "system"}
-                                <div class="{message.role} padded">
-                                    <p> <strong> {message.role}: </strong> {message.content} </p>
-                                </div>
+                    <div class="column padded spaced" style="width: 100%; height: 100%;">
+                        <div id="media-player-area" class="bordered">
+                            {#if recording && recording.video}
+                                <video bind:this={mediaPlayer} src={recording.video} controls style="width: 100%; height: 100%;">
+                                    <track kind="captions" src="blank.vtt" srclang="en">
+                                </video>
+                            {:else if recording && recording.audio}
+                                <audio bind:this={mediaPlayer} src={recording.audio} controls style="width: 100%; height: 100%;"></audio>
+                            {:else}
+                                <video bind:this={mediaPlayer} src="video.mp4" controls style="width: 100%; height: 100%;">
+                                    <track kind="captions" src="blank.vtt" srclang="en">
+                                </video>
                             {/if}
-                        {/each}
-                        <div class="assistant padded column" class:invisible={is_loading===false}>
-                            <p> <strong> assistant: </strong>  </p>
-                            <LoadingBar bind:progress={progress} bind:status={load_status} />
                         </div>
-                        <div style="height: 20%; width: 100%; background-color:white; color:white; cursor: default;"></div> 
+                        <div id="transcript-area" class="column bordered spaced">
+                            {#if recording && recording.transcript}
+                                <p class="spaced padded"> 
+                                    {#each recording.transcript_list as excerpt, i}
+                                        <span class="timestamp" on:click={async () => {seekTo(excerpt.start_timestamp, mediaPlayer); await logAction("FeedbackList: Seek to start timestamp", excerpt.start_timestamp)}}>[{excerpt.start_timestamp}]</span> - <span class="timestamp" on:click={async () => {seekTo(excerpt.end_timestamp, mediaPlayer); await logAction("FeedbackList: Seek to end timestamp", excerpt.end_timestamp)}}>[{excerpt.end_timestamp}]</span>
+                                        <br>
+                                        {excerpt.speaker ? excerpt.speaker+":" : ""}  
+                                        <span id={excerpt.id}>
+                                            {@html excerpt.dialogue} 
+                                        </span> <br><br>
+                                    {/each}
+                                </p>
+                            {/if}
+                        </div>
                     </div>
-
-                    <div id="chatbot-actions" class="column padded spaced centered">
-                        <div id="chatbot-utilities" class="row centered spaced" >
-                            <div id="contexts" class="column centered bordered" style={image_url ? "width:30%;" : "width:45%;"}>
-                                <span><strong>Feedback Context:</strong></span>
-                                {#if context}
-                                    <!-- {#each contexts as context} -->
-                                    <div class="suggested-message row "> 
-                                        <span>{context.quote.slice(0, 20)}... </span>
-                                        <button on:click|preventDefault={
-                                            async () => {
-                                                await logAction("FeedbackList: Removed context", context);
-                                                context=null;
-                                            }}>
-                                            <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove context" class="mini-icon">
-                                        </button>
-                                    </div>
-                                    <!-- {/each} -->
-                                {:else}
-                                    <span> None. Add by selecting from the feedback.</span>
-                                {/if}
-                            </div>
-                            <div id="suggested-messages" class="column centered bordered" style={image_url ? "width:30%;" : "width:45%;"}>
-                                <span><strong>Suggested messages:</strong></span>
-                                <div class="suggested-message" on:click|preventDefault={
-                                        async () => {
-                                            await sendMessage("Can you explain the following feedback?",context);
-                                            await logAction("FeedbackList: Sent message", ["Explain feedback", context, image_url]);
-                                        }
-                                    } >
-                                    Explain feedback.
-                                </div>
-                                <div class="suggested-message" on:click|preventDefault={
-                                        async () => {
-                                            await sendMessage("Can you brainstorm the tasks to do to address the following feedback?",context);
-                                            await logAction("FeedbackList: Sent message", ["Brainstorm actions", context, image_url]);
-                                        }
-                                    }>
-                                    Brainstorm actions.
-                                </div>
-                            </div>
-                            <div id="visual-context" class="column centered bordered" style={image_url ? "width:30%;" : "display:none;"}>
-                                
-                                {#if image_url}
-                                    <span><strong>Attached image:</strong></span>
-                                    <div class="row" style="width:100%; height:100%;">
-                                        <img src={image_url} alt="Visual context" style="width:100%; height:100%;">
-                                        <button on:click|preventDefault={
-                                            async () => {
-                                                await logAction("FeedbackList: Removed image", image_url);
-                                                image_url = null;
-                                                selected_image = null;
-
-                                            }}>
-                                            <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove context" class="mini-icon">
-                                        </button>
-                                    </div>
-                                    
-                                {:else}
-                                    
-                                {/if}
-                            </div>
-                        </div>
-                        <div id="chatbot-input" class="row spaced centered" >
-                            <div class="column spaced">
-                                <button class="action-button centered column" on:click|preventDefault={async () => { 
-                                        // Take screenshot.
-                                        // Attach screenshotted image as a context. 
-                                    }}>
-                                    <img src="./logos/screenshot-tile-noroot-svgrepo-com.svg" alt="Screenshot" class="action-icon">
-                                </button>
-                                
-                                <label for="image_upload" style="display: none;"></label>
-                                <input bind:value={image_files} bind:this={image_input} 
-                                    accept="image/png, image/jpeg" type="file" style="display: none;"
-                                    id="image_upload" name="image_upload" 
-                                    on:change = { async () => {
-                                        image_files = image_input.files;
-                                        [image_url,selected_image] = await handleImageUpload(image_files);
-                                        await logAction("FeedbackList: Uploaded image", image_url);
-                                    }}
-                                />
-                                <button class="action-button centered column" on:click|preventDefault={async () => { 
-                                        // Add image
-                                        image_input.click();
-                                    }}>
-                                    
-                                    <img src="./logos/image-svgrepo-com.svg" alt="Attach image" class="action-icon">
-                                </button>
-                            </div>
-                            
-                            <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, context)}"  placeholder="Type your message here..." id="textarea"></textarea>
-                            <button class="action-button centered column" disabled={is_loading} on:click|preventDefault={async () => { 
-                                    await sendMessage(inputMessage,  context);
-                                    await logAction("FeedbackList: Sent message", [inputMessage, context, image_url]);
-                                    inputMessage = "";
-                                }}>
-                                <img src="./logos/send-svgrepo-com.svg" alt="Send" class="action-icon">
+                    
+                {:else if active_right_tab===1}
+                    <div id="chatbot-tab-content" class="column">
+                        <div id="chatbot-header" class="row">
+                            <button class="action-button" on:click={()=> {show_chatbot_settings=!show_chatbot_settings;}}>
+                                <img class="action-icon" 
+                                src="./logos/settings-svgrepo-com.svg" 
+                                alt="Chatbot settings" 
+                                style="width: 2.5rem; height: 2.5rem;">
                             </button>
                         </div>
+
+                        {#if !show_chatbot_settings} 
+                            <div id="chatbot-messages" class="column spaced bordered padded">
+                                <div class="assistant padded">
+                                    <p> <strong> assistant: </strong> Hello! How can I help you today? </p>
+                                </div>
+                                {#each chatbot_messages as message} 
+                                    {#if message.role != "system"}
+                                        <div class="{message.role} padded">
+                                            <p> <strong> {message.role}: </strong> {message.content} </p>
+                                        </div>
+                                    {/if}
+                                {/each}
+                                <div class="assistant padded column" class:invisible={is_loading===false}>
+                                    <p> <strong> assistant: </strong>  </p>
+                                    <LoadingBar bind:progress={progress} bind:status={load_status} />
+                                </div>
+                                <div style="height: 20%; width: 100%; background-color:white; color:white; cursor: default;"></div> 
+                            </div>
+
+                            <div id="chatbot-actions" class="column padded spaced centered">
+                                <div id="chatbot-utilities" class="row centered spaced" >
+                                    <div id="contexts" class="column centered bordered" style={image_url ? "width:30%;" : "width:45%;"}>
+                                        <span><strong>Feedback Context:</strong></span>
+                                        {#if context}
+                                            <!-- {#each contexts as context} -->
+                                            <div class="suggested-message row "> 
+                                                <span>{context.quote.slice(0, 20)}... </span>
+                                                <button on:click|preventDefault={
+                                                    async () => {
+                                                        await logAction("FeedbackList: Removed context", context);
+                                                        context=null;
+                                                    }}>
+                                                    <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove context" class="mini-icon">
+                                                </button>
+                                            </div>
+                                            <!-- {/each} -->
+                                        {:else}
+                                            <span> None. Add by selecting from the feedback.</span>
+                                        {/if}
+                                    </div>
+                                    <div id="suggested-messages" class="column centered bordered" style={image_url ? "width:30%;" : "width:45%;"}>
+                                        <span><strong>Suggested messages:</strong></span>
+                                        <div class="suggested-message" on:click|preventDefault={
+                                                async () => {
+                                                    await sendMessage("Can you explain the following feedback?",context);
+                                                    await logAction("FeedbackList: Sent message", ["Explain feedback", context, image_url]);
+                                                }
+                                            } >
+                                            Explain feedback.
+                                        </div>
+                                        <div class="suggested-message" on:click|preventDefault={
+                                                async () => {
+                                                    await sendMessage("Can you brainstorm the tasks to do to address the following feedback?",context);
+                                                    await logAction("FeedbackList: Sent message", ["Brainstorm actions", context, image_url]);
+                                                }
+                                            }>
+                                            Brainstorm actions.
+                                        </div>
+                                    </div>
+                                    <div id="visual-context" class="column centered bordered" style={image_url ? "width:30%;" : "display:none;"}>
+                                        
+                                        {#if image_url}
+                                            <span><strong>Attached image:</strong></span>
+                                            <div class="row" style="width:100%; height:100%;">
+                                                <img src={image_url} alt="Visual context" style="width:100%; height:100%;">
+                                                <button on:click|preventDefault={
+                                                    async () => {
+                                                        await logAction("FeedbackList: Removed image", image_url);
+                                                        image_url = null;
+                                                        selected_image = null;
+        
+                                                    }}>
+                                                    <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove image" class="mini-icon">
+                                                </button>
+                                            </div>
+                                            
+                                        {:else}
+                                            
+                                        {/if}
+                                    </div>
+                                </div>
+                                <div id="chatbot-input" class="row spaced centered" >
+                                    <div class="column spaced">
+                                        <!-- <button class="action-button centered column" on:click|preventDefault={async () => { 
+                                                // Take screenshot.
+                                                // Attach screenshotted image as a context. 
+                                            }}>
+                                            <img src="./logos/screenshot-tile-noroot-svgrepo-com.svg" alt="Screenshot" class="action-icon">
+                                        </button> -->
+                                        
+                                        <label for="image_upload" style="display: none;"></label>
+                                        <input bind:value={image_files} bind:this={image_input} 
+                                            accept="image/png, image/jpeg" type="file" style="display: none;"
+                                            id="image_upload" name="image_upload" 
+                                            on:change = { async () => {
+                                                image_files = image_input.files;
+                                                [image_url,selected_image] = await handleImageUpload(image_files);
+                                                await logAction("FeedbackList: Uploaded image", image_url);
+                                            }}
+                                        />
+                                        <button class="action-button centered column" on:click|preventDefault={async () => { 
+                                                // Add image
+                                                image_input.click();
+                                            }}>
+                                            
+                                            <img src="./logos/image-svgrepo-com.svg" alt="Attach image" class="action-icon">
+                                        </button>
+                                    </div>
+                                    
+                                    <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, context)}"  placeholder="Type your message here..." id="textarea"></textarea>
+                                    <button class="action-button centered column" disabled={is_loading} on:click|preventDefault={async () => { 
+                                            await sendMessage(inputMessage,  context);
+                                            await logAction("FeedbackList: Sent message", [inputMessage, context, image_url]);
+                                            inputMessage = "";
+                                        }}>
+                                        <img src="./logos/send-svgrepo-com.svg" alt="Send" class="action-icon">
+                                    </button>
+                                </div>
+                            </div>
+                        {:else}
+                            <div id="chatbot-settings" class="column padded spaced" style="width: 100%; height: 95%;">
+                                <div id="chatbot-configurations" class="column centered spaced padded bordered">
+                                    <span> <strong> Configurations </strong> </span>
+
+                                    <div class="row spaced centered" style="height: auto; width: 100%;">
+                                        <span>Model: </span>
+                                        <select bind:value={selected_chatbot} >
+                                            {#each Object.keys(chatbot_models) as model}
+                                                <option value={model}>{model}</option>
+                                            {/each}
+                                        </select>
+                                    </div>
+                                    <div class="row spaced" style="height: auto; width: 100%;">
+                                        <span>Temperature: </span>
+                                        <Range min=0.0 max=2.0 step=0.1 bind:value={chatbot_temperature} />
+                                    </div>
+                                    <div class="row spaced" style="height: auto; width: 100%;">
+                                        <span>Max Output Tokens: </span>
+                                        <Range min=10.0 max=4095.0 step=1.0 bind:value={chatbot_max_output_tokens} />
+                                    </div>
+
+                                </div>
+                                <div id="chatbot-rag-panel" class="column centered spaced padded bordered" >
+                                    <span> <strong> Chatbot's Resources </strong> </span>
+
+                                    
+
+                                    <div id="chatbot-rag-sources" class="column centered bordered" style="width:100%; height:auto;">
+                                        <div class="row bordered spaced centered">
+                                            RAG Source 1
+                                            <button class="action-button" on:click|preventDefault={
+                                                async () => {
+                                                    
+                                                }}>
+                                                <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove RAG source" class="mini-icon">
+                                            </button>
+                                        </div>
+                                        <div class="row bordered spaced centered">
+                                            RAG Source 2
+                                            <button class="action-button" on:click|preventDefault={
+                                                async () => {
+                                                    
+                                                }}>
+                                                <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove RAG source" class="mini-icon">
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div id="chatbot-rag-buttons">
+
+                                    </div>
+
+
+                                    
+
+                                </div>
+
+                            </div>
+
+                        {/if}
+
+
+
+                        
+
                     </div>
+                    
+                    
+
+                    
+
+                    
 
                 {/if}
             </div>
@@ -664,9 +764,29 @@
         width:100%;
     }
 
+    #chatbot-tab-content {
+        height:100%;
+        width:100%;
+    }
+
+    #chatbot-header{
+        height:5%;
+        width:100%;
+        display:flex;
+        flex-direction:row;
+        justify-content: right;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background-color: rgb(201, 201, 201);
+        padding-top: 0.1rem;
+        padding-bottom: 0.1rem;
+    }
+
     #chatbot-messages{
         padding-top:1rem;
-        height:70%;
+        height:65%;
         width:100%;
         overflow-y: auto;
     }
