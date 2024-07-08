@@ -691,9 +691,6 @@
 
             <div class="overlay centered padded" class:invisible={is_loading===false}> 
                     <LoadingBar bind:progress={progress} bind:status={load_status} />
-                <!-- <div bind:this={ld_bar_transcript} id="ld-bar-transcript" class="ldBar centered column" data-preset="circle" data-value=0 style="width:100%; height: 20%;">
-                    {load_status}
-                </div> -->
             </div>
 
             <div id="traverse-feedback-area" class="bordered spaced" >
@@ -822,7 +819,7 @@
                             <div class="column centered">
                                 <label for="to-transcribe">
                                     Transcribe 
-                                    <a class="link" style="color: blue;"
+                                    <a class="tooltip-link" style="color: blue;"
                                     on:mouseover={() => {tooltip.style.visibility = 'visible';}} 
                                     on:mouseout={() => {tooltip.style.visibility = 'hidden';}}>
                                         (?)

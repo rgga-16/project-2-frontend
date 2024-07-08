@@ -1,5 +1,5 @@
 <script>
-    import { prevent_default } from 'svelte/internal';
+    import { onMount, prevent_default } from 'svelte/internal';
 
     import {seekTo, focusOnFeedback, logAction, pause} from '../utils.js';
     import LoadingBar from './LoadingBar.svelte';
@@ -35,6 +35,9 @@
     let image_files;
     let image_input;
 
+    let documents = [];
+    let document_files, document_file_input;
+
 
     let left_panel_tabs = [
         "Critical Feedback", "Positive Feedback"
@@ -44,9 +47,14 @@
     ]
 
     let is_loading=false; 
-    let load_status = "";
-    let progress= 0; 
+    let chatbot_load_status = "";
+    let chatbot_load_progress= 0; 
     let ld_bar_chatbot; 
+
+    let document_load_status="";
+    let document_load_progress=0;
+    let is_document_loading=false;
+
 
     async function convertImageToBase64(file) {
         return new Promise((resolve, reject) => {
@@ -181,14 +189,14 @@
         };
 
         if(selected_image) {
-            load_status = "Uploading image...";
-            progress=30; 
+            chatbot_load_status = "Uploading image...";
+            chatbot_load_progress=30; 
             let image_base64 = await convertImageToBase64(selected_image);
             body["image_data"] = image_base64;
         }
 
-        load_status = "Thinking...";
-        progress=50;
+        chatbot_load_status = "Thinking...";
+        chatbot_load_progress=50;
         const response = await fetch("/message_chatbot", {
             method: "POST",
             headers: {
@@ -202,8 +210,8 @@
         const json = await response.json();
         let chatbot_response = json["chatbot_response"];
 
-        load_status="Done!"
-        progress=100;
+        chatbot_load_status="Done!"
+        chatbot_load_progress=100;
         await pause(1200);
         
         chatbot_messages.push({role: "assistant", content: chatbot_response});
@@ -211,7 +219,7 @@
         feedback_list = feedback_list;
 
         is_loading=false;
-        progress=0;
+        chatbot_load_progress=0;
     }
 
     function addContext(feedback) {
@@ -221,6 +229,74 @@
             context = feedback;
         }
     }
+
+    async function addDocument(event) {
+        const files = event.target.files; 
+
+        if (files) {
+            for (const file of files) {
+
+                const formData = new FormData();
+                formData.append("file", file);
+
+                document_load_progress=50;
+                document_load_status = "Adding document... (this may take a while)";
+                const response = await fetch("/add_document", {
+                    method: "POST",
+                    body: formData
+                });
+                if (!response.ok) {
+                    return null;
+                } 
+                const json = await response.json();
+                
+
+                let document_name = json["document_name"];
+                documents.push(document_name);
+                documents=documents;
+                document_load_status = "Done!";
+                document_load_progress=100;
+                await pause(1200);
+            }
+        }
+    }
+
+    
+    async function deleteDocument(title) {
+
+        const response = await fetch("/delete_document", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({title: title})
+        });
+        if (!response.ok) {
+            return "failed";
+        } 
+
+        documents = documents.filter(doc => doc !== title);
+        documents=documents;
+        return title
+    }
+
+    async function deleteAllDocuments() {
+        document_load_status="Removing all documents...";
+        for(let i=0; i<documents.length; i++) {
+            let doc = documents[i];
+            document_load_progress = (i)/documents.length*100;
+            await deleteDocument(doc);
+        }
+        document_load_status="Done!";
+        document_load_progress=100;
+        await pause(1000);
+        document_load_progress=0;
+    }
+
+    onMount(async () => {
+        documents = await fetch("/get_documents").then(r => r.json()).then(r => r.documents);
+        
+    });
 
     
 </script>
@@ -443,13 +519,15 @@
                     
                 {:else if active_right_tab===1}
                     <div id="chatbot-tab-content" class="column">
-                        <div id="chatbot-header" class="row">
-                            <button class="action-button" on:click={()=> {show_chatbot_settings=!show_chatbot_settings;}}>
-                                <img class="action-icon" 
-                                src="./logos/settings-svgrepo-com.svg" 
-                                alt="Chatbot settings" 
-                                style="width: 2.5rem; height: 2.5rem;">
-                            </button>
+                        <div id="chatbot-header" class="padded row">
+                                <button class="action-button" on:click={()=> {show_chatbot_settings=!show_chatbot_settings;}}>
+                                    <img class="action-icon" 
+                                    src={show_chatbot_settings ? "./logos/exit-svgrepo-com.svg" : "./logos/settings-svgrepo-com.svg" }
+                                    alt={show_chatbot_settings ? "Exit hatbot settings" : "Open chatbot settings"}
+                                    style="width: 2.5rem; height: 2.5rem;">
+                                </button>
+
+                            
                         </div>
 
                         {#if !show_chatbot_settings} 
@@ -466,7 +544,7 @@
                                 {/each}
                                 <div class="assistant padded column" class:invisible={is_loading===false}>
                                     <p> <strong> assistant: </strong>  </p>
-                                    <LoadingBar bind:progress={progress} bind:status={load_status} />
+                                    <LoadingBar bind:load_progress={chatbot_load_progress} bind:status={chatbot_load_status} />
                                 </div>
                                 <div style="height: 20%; width: 100%; background-color:white; color:white; cursor: default;"></div> 
                             </div>
@@ -597,31 +675,81 @@
                                 <div id="chatbot-rag-panel" class="column centered spaced padded bordered" >
                                     <span> <strong> Chatbot's Resources </strong> </span>
 
-                                    
+                                    <div id="chatbot-rag-sources" class="column centered spaced padded bordered" style="width:100%; height:auto; overflow-y:auto;">
+                                        
+                                        <div class="overlay centered padded" class:invisible = {is_document_loading===false}>
+                                            <LoadingBar bind:progress={document_load_progress} bind:status={document_load_status} />
+                                        </div>
 
-                                    <div id="chatbot-rag-sources" class="column centered bordered" style="width:100%; height:auto;">
-                                        <div class="row bordered spaced centered">
-                                            RAG Source 1
-                                            <button class="action-button" on:click|preventDefault={
-                                                async () => {
-                                                    
-                                                }}>
-                                                <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove RAG source" class="mini-icon">
-                                            </button>
-                                        </div>
-                                        <div class="row bordered spaced centered">
-                                            RAG Source 2
-                                            <button class="action-button" on:click|preventDefault={
-                                                async () => {
-                                                    
-                                                }}>
-                                                <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove RAG source" class="mini-icon">
-                                            </button>
-                                        </div>
+                                        {#if documents.length > 0}
+                                            {#each documents as doc}
+                                                <div class="row centered spaced bordered centered">
+                                                    {doc}
+                                                    <button disabled={is_document_loading} class="action-button" on:click|preventDefault={
+                                                        async () => {
+                                                            let confirm = window.confirm("Are you sure you want to delete this document? This cannot be undone.");
+                                                            if(!confirm) {
+                                                                return;
+                                                            }
+                                                            is_document_loading=true;
+                                                            document_load_progress=50;
+                                                            document_load_status="Removing document...";
+                                                            let result = await deleteDocument(doc);
+                                                            document_load_status="Done!";
+                                                            document_load_progress=100;
+                                                            is_document_loading=false;
+                                                            logAction("FeedbackList: Removed document", result);
+                                                        }}>
+                                                        <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove document" class="mini-icon">
+                                                    </button>
+                                                </div>
+                                            {/each}
+                                        {:else}
+                                            <span> No resources available. </span>
+                                        {/if}
                                     </div>
 
-                                    <div id="chatbot-rag-buttons">
-
+                                    <div id="chatbot-rag-buttons" class="row centered  padded spaced" style="width:100%; height:auto;"> 
+                                        <input bind:this={document_file_input} type="file" id="document_file_input" class="gone" on:change={
+                                            async (e) => {
+                                                is_document_loading=true;
+                                                await addDocument(e);
+                                                
+                                                is_document_loading=false;
+                                                logAction("FeedbackList: Added document", e.target.files);
+                                            }}
+                                        />
+                                        <button disabled={is_document_loading} class="centered spaced column action-button"
+                                            
+                                            on:click={async () => {
+                                                // Add document
+                                                let confirm = window.confirm("Adding a new document will take a long time, since its information will be extracted. Do you want to proceed?");
+                                                if(!confirm) {
+                                                    return;
+                                                }
+                                                document.getElementById("document_file_input").click();
+                                                await logAction("FeedbackList: Added document", "Document");
+                                            }}
+                                        >
+                                            <img src="./logos/add-ellipse-svgrepo-com.svg" alt="Add document" class="action-icon">
+                                            Add Document
+                                        </button>
+                                        <button disabled={is_document_loading} class="centered spaced column action-button"
+                                            on:click={async () => {
+                                                // Remove all documents
+                                                let confirm = window.confirm("Are you sure you want to remove all documents? This cannot be undone.");
+                                                if(!confirm) {
+                                                    return;
+                                                }
+                                                is_document_loading=true;
+                                                await deleteAllDocuments();
+                                                is_document_loading=false;
+                                                await logAction("FeedbackList: Removed all documents", "Documents");
+                                            }}
+                                        >
+                                            <img src="./logos/delete-svgrepo-com.svg" alt="Remove all documents" class="action-icon">
+                                            Remove All
+                                        </button>
                                     </div>
 
 
