@@ -1,13 +1,20 @@
 <script>
     import { onMount, prevent_default } from 'svelte/internal';
 
-    import {seekTo, focusOnFeedback, logAction, pause} from '../utils.js';
+    import {seekTo, focusOnFeedback, logAction, pause, focusOnFeedbackNote} from '../utils.js';
     import LoadingBar from './LoadingBar.svelte';
     import Range from './Range.svelte';
 
     export let feedback_list;
     export let recording; 
 
+    let my_notes = [];
+    let feedback_notes = {
+        1: {notes:["This is a note", "This is another note"], is_adding:false},
+        2: {notes:["This is a note", "This is another note"], is_adding:false},
+        3: {notes:["This is a note", "This is another note"], is_adding:false},
+    };
+    
     let show_chatbot_settings=false;
     let chatbot_models = {
         "GPT-4o":"gpt-4o",
@@ -43,7 +50,7 @@
         "Critical Feedback", "Positive Feedback"
     ]
     let right_panel_tabs = [
-        "Transcript", "Chatbot"
+        "Transcript", "Chatbot","Notes"
     ]
 
     let is_loading=false; 
@@ -293,6 +300,42 @@
         document_load_progress=0;
     }
 
+    let adding_note=false;
+    let temp_note="";
+
+    async function addNote(note,feedback_id=null) {
+
+        if(note.trim() == "") {
+            alert("Please enter a note.");
+            return;
+        }
+
+        if(feedback_id) {
+            feedback_notes[feedback_id].notes.push(note);
+            feedback_notes[feedback_id].notes = feedback_notes[feedback_id].notes;
+        } else {
+            my_notes.push(note);
+            my_notes = my_notes;
+        }
+    }
+
+    async function removeNote(note_idx, feedback_id=null) {
+        if(feedback_id) {
+            feedback_notes[feedback_id].notes.splice(note_idx, 1);
+            feedback_notes[feedback_id].notes = feedback_notes[feedback_id].notes;
+        } else {
+            my_notes.splice(note_idx, 1);
+            my_notes = my_notes;
+        }
+    }
+
+    async function confirmNote(feedback_id=null) {
+        adding_note=false;
+        addNote(temp_note, feedback_id);
+        temp_note="";
+    }
+
+
     onMount(async () => {
         documents = await fetch("/get_documents").then(r => r.json()).then(r => r.documents);
         
@@ -355,8 +398,6 @@
                                 <div class="feedback-row row bordered padded" class:done={feedback.done} class:selected={feedback===selected_feedback} 
                                     on:click={async (event) => {
                                         selectFeedback(feedback, event);
-                                        // context=null;
-                                        // addContext(feedback);
                                         focusOnFeedback(feedback);
                                         await logAction("FeedbackList: Selected feedback", feedback);
                                     }}
@@ -397,26 +438,6 @@
                                                 on:click={async () => {showParaphrasedQuote(feedback, true); await logAction("FeedbackList: Show paraphrased quote", feedback.positivised_quote)}}>(View paraphrased quote)</span> {/if}
                                             {/if}
                                         </span>
-                                        <!-- <span>
-                                            <strong>Task: </strong> 
-                                            {#if feedback.task}
-                                                {feedback.task}
-                                                <button class="action-button" on:click={async () => {
-                                                    feedback.task = await generateTask(feedback.quote, feedback.excerpt_reference.dialogue);
-                                                    feedback_list = feedback_list;
-                                                }}>
-                                                    <img src="./logos/ai-create-task.png" alt="Generate Task" class="mini-icon">
-                                                </button>
-                                            {:else}
-                                                (None created yet)
-                                                <button class="action-button" on:click={async () => {
-                                                    feedback.task = await generateTask(feedback.quote, feedback.excerpt_reference.dialogue);
-                                                    feedback_list = feedback_list;
-                                                }}>
-                                                    <img src="./logos/ai-add.png" alt="Generate Task" class="mini-icon">
-                                                </button>
-                                            {/if}
-                                        </span> -->
                                     </div>
                                     <span  class="centered speaker-col">
                                         {feedback.speaker ? feedback.speaker : "Unknown"}
@@ -431,12 +452,25 @@
                                             <img src="./logos/ai-positive-paraphrase.png" alt="Paraphrase positively" class="action-icon">
                                             Positivize
                                         </button>
+
                                         <button class="action-button centered column" on:click={async () => {
                                             addContext(feedback);
                                             await logAction("FeedbackList: Add as context", context);
                                         }}>
                                             <img src="./logos/add-ellipse-svgrepo-com.svg" alt="Add feedback as context" class="action-icon">
-                                            Add Context
+                                            Select Context
+                                        </button>
+                                        <button class="action-button" on:click={async () => {
+                                            active_right_tab = 2;
+                                            if(feedback.id in feedback_notes) {
+                                                console.log("wtf");
+                                                feedback_notes[feedback.id].is_adding = true;
+                                            } else {
+                                                feedback_notes[feedback.id] = {notes:[], is_adding:true};
+                                            }
+                                        }}>
+                                            <img src="./logos/delete-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
+                                            Add Note
                                         </button>
                                         <button class="action-button" on:click={async () => {
                                             removeFeedback(feedback);
@@ -445,6 +479,7 @@
                                             <img src="./logos/delete-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
                                             Delete
                                         </button>
+                                        
                                     </div>
                                     <span  class="centered done-col">
                                         <input type="checkbox" bind:checked={feedback.done} />
@@ -472,7 +507,6 @@
                         {/each}
                     </div>
                 {/if}
-
             </div>
         </div>
 
@@ -676,7 +710,6 @@
                                     <span> <strong> Chatbot's Resources </strong> </span>
 
                                     <div id="chatbot-rag-sources" class="column centered spaced padded bordered" style="width:100%; height:auto; overflow-y:auto;">
-                                        
                                         <div class="overlay centered padded" class:invisible = {is_document_loading===false}>
                                             <LoadingBar bind:progress={document_load_progress} bind:status={document_load_status} />
                                         </div>
@@ -714,7 +747,6 @@
                                             async (e) => {
                                                 is_document_loading=true;
                                                 await addDocument(e);
-                                                
                                                 is_document_loading=false;
                                                 logAction("FeedbackList: Added document", e.target.files);
                                             }}
@@ -768,7 +800,166 @@
                     </div>
                     
                     
+                {:else if active_right_tab===2}
+                    <div class="column spaced padded" style="width: 100%; height: 100%; overflow-y: auto;">
+                        <div class="column centered spaced padded" style="width:100%; height:auto;">
+                            <div class="row centered" style="width:100%; height:auto;">
+                                <span style="text-decoration: underline;"> <strong>  My Notes </strong></span>
+                            </div>
+                            <div class="column bordered" class:centered={my_notes.length <= 0} style="width:100%; height:auto;">
+                                {#if my_notes.length > 0}
+                                    {#each my_notes as note, i}
+                                        <div class="row padded bordered space-between"> 
+                                            <p>{note}</p>
+                                            <div class="row">
+                                                <button> Edit </button>
+                                                <button on:click={async () => {
+                                                    removeNote(i);
+                                                    await logAction("FeedbackList: Removed note", note);
+                                                }}> 
+                                                    Delete 
+                                                </button>
+                                            </div>
+                                        </div>
+                                    {/each}
+                                {:else}
+                                    <div class="row padded space-between centered">
+                                        <span> No notes added. Feel free to add a note. </span>
+                                    </div>
+                                {/if}
+                                {#if adding_note} 
+                                    <div class="row padded bordered space-between" style="width:100%; height:auto;"> 
+                                        <input type="text" bind:value={temp_note} placeholder="Enter your note here" />
+                                        <div class="row spaced">
+                                            <button on:click={async () => {
+                                                confirmNote(); 
+                                                adding_note=false;
+                                                await logAction("FeedbackList: Added note to My Notes", temp_note);
+                                            }}> Confirm </button>
+                                            <button on:click={async () => {
+                                                adding_note=false;
+                                                temp_note="";
+                                                await logAction("FeedbackList: Cancelled adding note to My Notes", temp_note);
+                                            }}> Cancel </button>
+                                        </div>
+                                    </div>
+                                {/if}
+                            </div>
+                            
+                            <div class="row centered spaced">
+                                <button
+                                    on:click={async () => {
+                                        adding_note=true;
+                                    }}
+                                > 
+                                    Add note 
+                                </button>
+                                <button on:click={async() => {
 
+                                    let confirm = window.confirm("Are you sure you want to delete all notes? This cannot be undone.");
+                                    if(!confirm) {
+                                        return;
+                                    }
+                                    my_notes=[];
+                                    my_notes=my_notes;
+                                    await logAction("FeedbackList: Removed all notes", "My Notes");
+                                }}> Delete all </button>
+                            </div>
+                        </div>
+
+                        <div class="row centered" style="width:100%; height:auto;">
+                            <span style="text-decoration: underline;"> <strong>  My Feedback Notes </strong></span>
+                        </div>
+                        {#if Object.keys(feedback_notes).length > 0}
+                            {#each Object.keys(feedback_notes).map(Number).sort((a, b) => a - b) as key}
+                                <div id={"feedback-note-section-"+key} class="column centered spaced padded" style="width:100%; height:auto;">
+                                    <div class="row space-between" style="width:100%; height:auto;">
+                                        <span> <strong> Feedback #{key} Notes: </strong> {feedback_list[key-1].quote.slice(0, 70)}...</span>
+                                        <button on:click={async () => {
+                                            let string = "Are you sure you want to delete this feedback notes section? This cannot be undone";
+                                            if(feedback_notes[key].notes.length > 0) {
+                                                string = "Are you sure you want to delete this feedback notes section? This will delete all notes and cannot be undone.";
+                                            }
+                                            let confirm = window.confirm(string);
+                                            if(!confirm) {
+                                                return;
+                                            }
+                                            delete feedback_notes[key];
+                                            feedback_notes = feedback_notes;
+                                            await logAction("FeedbackList: Removed feedback notes section", "Feedback ID"+key);
+                                            console.log(feedback_notes);
+                                        }}> 
+                                            Delete 
+                                        </button>
+                                    </div>
+                                    <div class="column bordered" class:centered={feedback_notes[key].notes.length <= 0} 
+                                    style="width:100%; height:auto;">
+                                        {#if feedback_notes[key].notes.length > 0}
+                                            {#each feedback_notes[key].notes as note, i}
+                                                <div class="row padded bordered space-between"> 
+                                                    <p>{note}</p>
+                                                    <div class="row spaced">
+                                                        <button> Edit </button>
+                                                        <button on:click={async () => {
+                                                            removeNote(i, key);
+                                                            await logAction("FeedbackList: Removed note", note);
+                                                        }}> 
+                                                            Delete 
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            {/each}
+                                        {:else}
+                                            <div class="row padded centered space-between">
+                                                <span> No notes added. Feel free to add a note. </span>
+                                            </div>
+                                        {/if}   
+                                        {#if feedback_notes[key].is_adding} 
+                                            <div class="row padded bordered space-between" style="width:100%; height:auto;"> 
+                                                <input type="text" bind:value={temp_note} placeholder="Enter your note here" />
+                                                <div class="row spaced">
+                                                    <button on:click={async () => {
+                                                        confirmNote(key);
+                                                        feedback_notes[key].is_adding=false;
+                                                        await logAction("FeedbackList: Added note to Feedback ID"+key, temp_note);
+                                                    }}> Confirm </button>
+                                                    <button on:click={async () => {
+                                                        feedback_notes[key].is_adding=false;
+                                                        await logAction("FeedbackList: Cancelled adding note to Feedback ID"+key, temp_note);
+                                                        temp_note="";
+                                                    }}> Cancel </button>
+                                                </div>
+                                            </div>
+                                        {/if}
+                                    </div>
+                                    <div class="row centered spaced">
+                                        <button
+                                            on:click={async () => {
+                                                feedback_notes[key].is_adding=true;
+                                            }}
+                                        > 
+                                            Add note 
+                                        </button>
+                                        <button on:click={async() => {
+                                            let confirm = window.confirm("Are you sure you want to delete all notes? This cannot be undone.");
+                                            if(!confirm) {
+                                                return;
+                                            }
+                                            feedback_notes[key].notes=[];
+                                            feedback_notes[key].notes=feedback_notes[key].notes;
+                                            await logAction("FeedbackList: Removed all notes", "Feedback ID"+key);
+                                        }}> Delete all </button>
+                                    </div>
+                                </div>
+                            {/each}
+                        {:else}
+                            <div class="column centered spaced padded" style="width:100%; height:auto;">
+                                <div class="row space-between centered" style="width:100%; height:auto;">
+                                    <span> No feedback notes added. Feel free to add notes on your feedback by clicking "Add Note" on any of the critical feedback.</span>
+                                </div>
+                            </div>
+                        {/if}
+                    </div>
                     
 
                     
@@ -1031,7 +1222,7 @@
     }
 
     .feedback-col {
-        width:50%;
+        width:45%;
     }
 
     .speaker-col {
@@ -1039,7 +1230,7 @@
     }
 
     .actions-col {
-        width:25%;
+        width:30%;
     }
 
     .done-col {

@@ -55,3 +55,13 @@ export function focusOnFeedback(feedback) {
         console.log("Error: Can't focus on feedback. Corresponding transcript excerpt not found.")
     }
 }
+
+export function focusOnFeedbackNote(feedback) {
+    let id = feedback.id;
+    let noteElement = document.getElementById("feedback-note-section-"+id);
+    if(noteElement) {
+        noteElement.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
+    } else {
+        console.log("Error: Can't focus on feedback note. Corresponding note section not found.")
+    }
+}

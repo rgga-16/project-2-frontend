@@ -82,6 +82,11 @@ main{
 	flex-direction: column;
 }
 
+.space-between {
+	display:flex;
+	justify-content: space-between;
+}
+
 .centered {
 	display: flex;
 	justify-content: center;
