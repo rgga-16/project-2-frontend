@@ -62,7 +62,6 @@
     let document_load_progress=0;
     let is_document_loading=false;
 
-
     async function convertImageToBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -71,7 +70,6 @@
             reader.readAsDataURL(file);
         });
     }
-
 
     async function handleImageUpload(image_files) {
         let image_file = image_files[0];
@@ -84,13 +82,11 @@
                 alert("Please select an image file.");
             }
         } else {
-            alert("No image selected.");
+            console.log("No image selected.");
         }
         return null;
 
     }
-
-
 
     async function paraphrasePositively(feedback_quote, excerpt) {
         const response = await fetch("/positively_paraphrase_feedback", {
@@ -147,7 +143,6 @@
 
     let sortKey = null;
     let sortAscending = true;
-
     function sortFeedbackList(key) {
         if (sortKey === key) {
             sortAscending = !sortAscending;
@@ -155,7 +150,6 @@
             sortKey = key;
             sortAscending = true;
         }
-
         feedback_list.sort((a, b) => {
             if (a[key] < b[key]) return sortAscending ? -1 : 1;
             if (a[key] > b[key]) return sortAscending ? 1 : -1;
@@ -229,12 +223,15 @@
         chatbot_load_progress=100;
         await pause(1200);
 
+        await logAction("FeedbackList: Sent message", [inputMessage, context, image_url]);
+
         let assistant_message = {
             role: "assistant",
             content: chatbot_response
         };
 
         context ? assistant_message["context"] = context : null;
+        image_url ? assistant_message["image"] = image_url : null;
         
         chatbot_messages.push(assistant_message);
         chatbot_messages = chatbot_messages;
@@ -318,7 +315,7 @@
     let adding_note=false;
     let temp_note="";
 
-    async function addNote(note,feedback_id=null) {
+    async function addNote(note,feedback_id=null, image_url=null) {
 
         if(note.trim() == "") {
             alert("Please enter a note.");
@@ -330,12 +327,15 @@
             if(feedback_id in feedback_notes) {
                 feedback_notes[feedback_id].notes.push(note);
                 feedback_notes[feedback_id].notes = feedback_notes[feedback_id].notes;
+                // image_url ? feedback_notes[feedback_id].image = image_url : null;
             } else {
                 feedback_notes[feedback_id] = {notes:[note], is_adding:false};
+                // image_url ? feedback_notes[feedback_id].image = image_url : null;
             }
         } else {
             my_notes.push(note);
             my_notes = my_notes;
+
         }
     }
 
@@ -483,13 +483,12 @@
                                         <button class="action-button" on:click={async () => {
                                             active_right_tab = 2;
                                             if(feedback.id in feedback_notes) {
-                                                console.log("wtf");
                                                 feedback_notes[feedback.id].is_adding = true;
                                             } else {
                                                 feedback_notes[feedback.id] = {notes:[], is_adding:true};
                                             }
                                         }}>
-                                            <img src="./logos/delete-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
+                                            <img src="./logos/note-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
                                             Add Note
                                         </button>
                                         <button class="action-button" on:click={async () => {
@@ -591,38 +590,59 @@
                                 </div>
                                 {#each chatbot_messages as message} 
                                     {#if message.role != "system"}
-                                        <div class="{message.role} padded column">
-
-                                            <div class="message-header row {"context" in message ? 'with-context' : 'no-context'}" >
-                                                {#if "context" in message}
-                                                    <div class="context-tag">
-                                                        <small>Context: F#{message.context.id} {
-                                                            message.context.quote.length > 50 ? message.context.quote.slice(0,50)+"..." : message.context.quote
-                                                        }</small>
-                                                    </div>
-                                                {/if}
-                                                <div class="row">
+                                        <div class="{message.role} padded column spaced">
+                                            <div class="message-header row {"context" in message || "image" in message ? 'with-context' : 'no-context'}" >
+                                                <div class="row spaced">
+                                                    {#if "context" in message}
+                                                        <div class="context-tag feedback">
+                                                            <small>Context: F#{message.context.id} {
+                                                                message.context.quote.length > 40 ? message.context.quote.slice(0,40)+"..." : message.context.quote
+                                                            }</small>
+                                                        </div>
+                                                    {/if}
+                                                    {#if "image" in message}
+                                                        <div class="context-tag image">
+                                                            <small>
+                                                                {message.role === "user" ? "Attached image" : "Response to image"}
+                                                            </small>
+                                                        </div>
+                                                    {/if}
+                                                </div>
+                                                <div class="row spaced">
+                                                    <button class="action-button column centered" on:click={async () => {
+                                                        active_right_tab = 2;
+                                                        addNote(message.role+": "+message.content);
+                                                        await logAction("FeedbackList: Added note to My Notes", message);                                                        
+                                                    }}> 
+                                                        <img src="./logos/note-svgrepo-com.svg" alt="Add to my notes" class="mini-icon">
+                                                    </button>
                                                     
                                                     {#if "context" in message}
-                                                        <button on:click={async () => {
+                                                        <button class="action-button column centered" on:click={async () => {
                                                             active_right_tab = 2;
                                                             addNote(message.role+": "+message.content, "id" in message.context ? message.context.id : null);
-                                                            
                                                             await logAction("FeedbackList: Added note to Feedback ID"+message.context.id, message);                                                        
                                                         }}> 
-                                                            add note 
+                                                            <img src="./logos/note-svgrepo-com.svg" alt="Add feedback note" class="mini-icon">
                                                         </button>
                                                     {/if}
                                         
-                                                    
-                                                    <button> copy </button>
+                                                    <button class="action-button column centered" on:click = {async () => {
+                                                        navigator.clipboard.writeText(message.role+": "+message.content);
+                                                        await logAction("FeedbackList: Copied message", message);
+                                                    }}> 
+                                                        <img src="./logos/copy-svgrepo-com.svg" alt="Copy note" class="mini-icon">
+                                                    </button>
                                                 </div>
                                             </div>
-                                            
-
                                             <div class="row">
                                                 <p> <strong> {message.role}: </strong> {message.content} </p>
                                             </div>
+                                            {#if "image" in message && message.role==="user"}
+                                                <div class="column centered" style="width: 100%;">
+                                                    <img src={message.image} alt="Visual context" style="width:50%; height:auto;">
+                                                </div>
+                                            {/if}
                                             
                                         </div>
                                     {/if}
@@ -658,7 +678,7 @@
                                         <div class="suggested-message" on:click|preventDefault={
                                                 async () => {
                                                     await sendMessage("Can you explain the following feedback?",context);
-                                                    await logAction("FeedbackList: Sent message", ["Explain feedback", context, image_url]);
+                                                    // await logAction("FeedbackList: Sent message", ["Explain feedback", context, image_url]);
                                                 }
                                             } >
                                             Explain feedback.
@@ -666,14 +686,13 @@
                                         <div class="suggested-message" on:click|preventDefault={
                                                 async () => {
                                                     await sendMessage("Can you brainstorm the tasks to do to address the following feedback?",context);
-                                                    await logAction("FeedbackList: Sent message", ["Brainstorm actions", context, image_url]);
+                                                    // await logAction("FeedbackList: Sent message", ["Brainstorm actions", context, image_url]);
                                                 }
                                             }>
                                             Brainstorm actions.
                                         </div>
                                     </div>
                                     <div id="visual-context" class="column centered bordered" style={image_url ? "width:30%;" : "display:none;"}>
-                                        
                                         {#if image_url}
                                             <span><strong>Attached image:</strong></span>
                                             <div class="row" style="width:100%; height:100%;">
@@ -683,7 +702,6 @@
                                                         await logAction("FeedbackList: Removed image", image_url);
                                                         image_url = null;
                                                         selected_image = null;
-        
                                                     }}>
                                                     <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove image" class="mini-icon">
                                                 </button>
@@ -710,7 +728,7 @@
                                             on:change = { async () => {
                                                 image_files = image_input.files;
                                                 [image_url,selected_image] = await handleImageUpload(image_files);
-                                                await logAction("FeedbackList: Uploaded image", image_url);
+                                                await logAction( image_url ? "FeedbackList: Uploaded image": "FeedbackList: Canceled uploading image", image_url);
                                             }}
                                         />
                                         <button class="action-button centered column" on:click|preventDefault={async () => { 
@@ -725,7 +743,7 @@
                                     <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, context)}"  placeholder="Type your message here..." id="textarea"></textarea>
                                     <button class="action-button centered column" disabled={is_loading} on:click|preventDefault={async () => { 
                                             await sendMessage(inputMessage,  context);
-                                            await logAction("FeedbackList: Sent message", [inputMessage, context, image_url]);
+                                            
                                             inputMessage = "";
                                         }}>
                                         <img src="./logos/send-svgrepo-com.svg" alt="Send" class="action-icon">
@@ -1287,12 +1305,19 @@
     }
 
     .context-tag {
-        background-color: #f0f0f0; /* Light grey background */
         padding: 2px 4px; /* Small padding */
         border-radius: 4px; /* Rounded corners */
         font-size: 0.75rem; /* Smaller font size */
         margin-bottom: 4px; /* Space between the tag and the message */
         text-align: center; /* Center the text */
+    }
+
+    .context-tag.feedback {
+        background-color: #ffbebe; /* Light red background */
+    }
+
+    .context-tag.image {
+        background-color: #a1c2ff; /* Light blue background */
     }
 
     .message-header {
