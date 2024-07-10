@@ -165,7 +165,7 @@
     }
 
     async function sendMessage(inputMessage,  context=null) {
-
+        let inputMessageClone = inputMessage.slice();
         if(is_loading) {
             alert("Please wait for the current message to be processed.");
             return;
@@ -177,30 +177,38 @@
             return;
         }
 
+        let message = {
+            role: "user", 
+            content: inputMessage
+        };
+
+
         if (context) {
-            let context_string = "\n\nHere are the pieces of feedback as context.";
+            message["context"] = context;
+            let context_string = "\n\nHere is the piece of feedback as context.";
             context_string += "\nF#"+context.id+": \""+context.speaker+": "+context.quote+"\".";
-            inputMessage += context_string;
+            inputMessageClone += context_string;
         }
 
-        chatbot_messages.push({role: "user", content: inputMessage});
-        chatbot_messages = chatbot_messages;
-        feedback_list = feedback_list;
-
         let body = {
-            message: inputMessage,
+            message: inputMessageClone,
             image_data: null,
             max_output_tokens: chatbot_max_output_tokens,
             temperature: chatbot_temperature,
             model: chatbot_models[selected_chatbot]
         };
 
+        image_url ? message["image"] = image_url : null;
         if(selected_image) {
             chatbot_load_status = "Uploading image...";
             chatbot_load_progress=30; 
             let image_base64 = await convertImageToBase64(selected_image);
             body["image_data"] = image_base64;
         }
+
+        chatbot_messages.push(message);
+        chatbot_messages = chatbot_messages; console.log(chatbot_messages);
+        feedback_list = feedback_list;
 
         chatbot_load_status = "Thinking...";
         chatbot_load_progress=50;
@@ -220,8 +228,15 @@
         chatbot_load_status="Done!"
         chatbot_load_progress=100;
         await pause(1200);
+
+        let assistant_message = {
+            role: "assistant",
+            content: chatbot_response
+        };
+
+        context ? assistant_message["context"] = context : null;
         
-        chatbot_messages.push({role: "assistant", content: chatbot_response});
+        chatbot_messages.push(assistant_message);
         chatbot_messages = chatbot_messages;
         feedback_list = feedback_list;
 
@@ -311,8 +326,13 @@
         }
 
         if(feedback_id) {
-            feedback_notes[feedback_id].notes.push(note);
-            feedback_notes[feedback_id].notes = feedback_notes[feedback_id].notes;
+
+            if(feedback_id in feedback_notes) {
+                feedback_notes[feedback_id].notes.push(note);
+                feedback_notes[feedback_id].notes = feedback_notes[feedback_id].notes;
+            } else {
+                feedback_notes[feedback_id] = {notes:[note], is_adding:false};
+            }
         } else {
             my_notes.push(note);
             my_notes = my_notes;
@@ -571,14 +591,45 @@
                                 </div>
                                 {#each chatbot_messages as message} 
                                     {#if message.role != "system"}
-                                        <div class="{message.role} padded">
-                                            <p> <strong> {message.role}: </strong> {message.content} </p>
+                                        <div class="{message.role} padded column">
+
+                                            <div class="message-header row {"context" in message ? 'with-context' : 'no-context'}" >
+                                                {#if "context" in message}
+                                                    <div class="context-tag">
+                                                        <small>Context: F#{message.context.id} {
+                                                            message.context.quote.length > 50 ? message.context.quote.slice(0,50)+"..." : message.context.quote
+                                                        }</small>
+                                                    </div>
+                                                {/if}
+                                                <div class="row">
+                                                    
+                                                    {#if "context" in message}
+                                                        <button on:click={async () => {
+                                                            active_right_tab = 2;
+                                                            addNote(message.role+": "+message.content, "id" in message.context ? message.context.id : null);
+                                                            
+                                                            await logAction("FeedbackList: Added note to Feedback ID"+message.context.id, message);                                                        
+                                                        }}> 
+                                                            add note 
+                                                        </button>
+                                                    {/if}
+                                        
+                                                    
+                                                    <button> copy </button>
+                                                </div>
+                                            </div>
+                                            
+
+                                            <div class="row">
+                                                <p> <strong> {message.role}: </strong> {message.content} </p>
+                                            </div>
+                                            
                                         </div>
                                     {/if}
                                 {/each}
                                 <div class="assistant padded column" class:invisible={is_loading===false}>
                                     <p> <strong> assistant: </strong>  </p>
-                                    <LoadingBar bind:load_progress={chatbot_load_progress} bind:status={chatbot_load_status} />
+                                    <LoadingBar bind:progress={chatbot_load_progress} bind:status={chatbot_load_status} />
                                 </div>
                                 <div style="height: 20%; width: 100%; background-color:white; color:white; cursor: default;"></div> 
                             </div>
@@ -588,7 +639,6 @@
                                     <div id="contexts" class="column centered bordered" style={image_url ? "width:30%;" : "width:45%;"}>
                                         <span><strong>Feedback Context:</strong></span>
                                         {#if context}
-                                            <!-- {#each contexts as context} -->
                                             <div class="suggested-message row "> 
                                                 <span>{context.quote.slice(0, 20)}... </span>
                                                 <button on:click|preventDefault={
@@ -599,7 +649,6 @@
                                                     <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove context" class="mini-icon">
                                                 </button>
                                             </div>
-                                            <!-- {/each} -->
                                         {:else}
                                             <span> None. Add by selecting from the feedback.</span>
                                         {/if}
@@ -887,7 +936,6 @@
                                             delete feedback_notes[key];
                                             feedback_notes = feedback_notes;
                                             await logAction("FeedbackList: Removed feedback notes section", "Feedback ID"+key);
-                                            console.log(feedback_notes);
                                         }}> 
                                             Delete 
                                         </button>
@@ -1144,6 +1192,7 @@
     .user {
         /* margin-left:1rem; */
 		background-color: white;
+        border: 1px solid lightgray;
 		
 	}
 	.assistant {
@@ -1235,6 +1284,27 @@
 
     .done-col {
         width:7%;
+    }
+
+    .context-tag {
+        background-color: #f0f0f0; /* Light grey background */
+        padding: 2px 4px; /* Small padding */
+        border-radius: 4px; /* Rounded corners */
+        font-size: 0.75rem; /* Smaller font size */
+        margin-bottom: 4px; /* Space between the tag and the message */
+        text-align: center; /* Center the text */
+    }
+
+    .message-header {
+        display:flex;
+        align-items:center;
+    }
+
+    .with-context {
+        justify-content: space-between; /* Context on the left, button on the right */
+    }
+    .no-context {
+        justify-content: flex-end; /* Button on the right */
     }
     
     
