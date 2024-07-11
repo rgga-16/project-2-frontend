@@ -281,7 +281,7 @@
     }
 
     
-    async function deleteDocument(title) {
+    async function deleteDocument(title,idx) {
 
         const response = await fetch("/delete_document", {
             method: "POST",
@@ -294,7 +294,8 @@
             return "failed";
         } 
 
-        documents = documents.filter(doc => doc !== title);
+        // Remove document at idx
+        documents = documents.splice(idx, 1);
         documents=documents;
         return title
     }
@@ -304,7 +305,7 @@
         for(let i=0; i<documents.length; i++) {
             let doc = documents[i];
             document_load_progress = (i)/documents.length*100;
-            await deleteDocument(doc);
+            await deleteDocument(doc,i);
         }
         document_load_status="Done!";
         document_load_progress=100;
@@ -782,7 +783,7 @@
                                         </div>
 
                                         {#if documents.length > 0}
-                                            {#each documents as doc}
+                                            {#each documents as doc,i}
                                                 <div class="row centered spaced bordered centered">
                                                     {doc}
                                                     <button disabled={is_document_loading} class="action-button" on:click|preventDefault={
@@ -794,7 +795,7 @@
                                                             is_document_loading=true;
                                                             document_load_progress=50;
                                                             document_load_status="Removing document...";
-                                                            let result = await deleteDocument(doc);
+                                                            let result = await deleteDocument(doc,i);
                                                             document_load_status="Done!";
                                                             document_load_progress=100;
                                                             is_document_loading=false;
@@ -898,12 +899,12 @@
                                     <div class="row padded bordered space-between" style="width:100%; height:auto;"> 
                                         <input type="text" bind:value={temp_note} placeholder="Enter your note here" />
                                         <div class="row spaced">
-                                            <button on:click={async () => {
+                                            <button class="action-button" on:click={async () => {
                                                 confirmNote(); 
                                                 adding_note=false;
                                                 await logAction("FeedbackList: Added note to My Notes", temp_note);
                                             }}> Confirm </button>
-                                            <button on:click={async () => {
+                                            <button class="action-button" on:click={async () => {
                                                 adding_note=false;
                                                 temp_note="";
                                                 await logAction("FeedbackList: Cancelled adding note to My Notes", temp_note);
@@ -914,23 +915,28 @@
                             </div>
                             
                             <div class="row centered spaced">
-                                <button
+                                <button class="action-button centered column"
                                     on:click={async () => {
                                         adding_note=true;
                                     }}
                                 > 
-                                    Add note 
+                                    <img src="./logos/note-svgrepo-com.svg" alt="Add Note" class="action-icon">
+                                    Add Note
                                 </button>
-                                <button on:click={async() => {
-
-                                    let confirm = window.confirm("Are you sure you want to delete all notes? This cannot be undone.");
-                                    if(!confirm) {
-                                        return;
-                                    }
-                                    my_notes=[];
-                                    my_notes=my_notes;
-                                    await logAction("FeedbackList: Removed all notes", "My Notes");
-                                }}> Delete all </button>
+                                <button class="action-button centered column"
+                                    on:click={async() => {
+                                        let confirm = window.confirm("Are you sure you want to delete all notes? This cannot be undone.");
+                                        if(!confirm) {
+                                            return;
+                                        }
+                                        my_notes=[];
+                                        my_notes=my_notes;
+                                        await logAction("FeedbackList: Removed all notes", "My Notes");
+                                }}> 
+                                    <img src="./logos/delete-svgrepo-com.svg" alt="Delete all notes" class="action-icon">
+                                    Delete all 
+                                    
+                                </button>
                             </div>
                         </div>
 
@@ -965,8 +971,8 @@
                                                 <div class="row padded bordered space-between"> 
                                                     <p>{note}</p>
                                                     <div class="row spaced">
-                                                        <button> Edit </button>
-                                                        <button on:click={async () => {
+                                                        <button class="action-button"> Edit </button>
+                                                        <button class="action-button" on:click={async () => {
                                                             removeNote(i, key);
                                                             await logAction("FeedbackList: Removed note", note);
                                                         }}> 
@@ -984,12 +990,12 @@
                                             <div class="row padded bordered space-between" style="width:100%; height:auto;"> 
                                                 <input type="text" bind:value={temp_note} placeholder="Enter your note here" />
                                                 <div class="row spaced">
-                                                    <button on:click={async () => {
+                                                    <button class="action=button" on:click={async () => {
                                                         confirmNote(key);
                                                         feedback_notes[key].is_adding=false;
                                                         await logAction("FeedbackList: Added note to Feedback ID"+key, temp_note);
                                                     }}> Confirm </button>
-                                                    <button on:click={async () => {
+                                                    <button class="action=button" on:click={async () => {
                                                         feedback_notes[key].is_adding=false;
                                                         await logAction("FeedbackList: Cancelled adding note to Feedback ID"+key, temp_note);
                                                         temp_note="";
@@ -999,22 +1005,27 @@
                                         {/if}
                                     </div>
                                     <div class="row centered spaced">
-                                        <button
+                                        <button class="action-button centered column"
                                             on:click={async () => {
                                                 feedback_notes[key].is_adding=true;
                                             }}
                                         > 
-                                            Add note 
+                                            <img src="./logos/note-svgrepo-com.svg" alt="Add Note" class="action-icon">
+                                            Add Note
                                         </button>
-                                        <button on:click={async() => {
-                                            let confirm = window.confirm("Are you sure you want to delete all notes? This cannot be undone.");
-                                            if(!confirm) {
-                                                return;
-                                            }
-                                            feedback_notes[key].notes=[];
-                                            feedback_notes[key].notes=feedback_notes[key].notes;
-                                            await logAction("FeedbackList: Removed all notes", "Feedback ID"+key);
-                                        }}> Delete all </button>
+                                        <button class="action-button centered column"
+                                            on:click={async() => {
+                                                let confirm = window.confirm("Are you sure you want to delete all notes? This cannot be undone.");
+                                                if(!confirm) {
+                                                    return;
+                                                }
+                                                feedback_notes[key].notes=[];
+                                                feedback_notes[key].notes=feedback_notes[key].notes;
+                                                await logAction("FeedbackList: Removed all notes", "Feedback ID"+key);
+                                            }}> 
+                                            <img src="./logos/delete-svgrepo-com.svg" alt="Delete all notes" class="action-icon">
+                                            Delete all  
+                                        </button>
                                     </div>
                                 </div>
                             {/each}
