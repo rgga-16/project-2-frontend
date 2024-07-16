@@ -751,10 +751,10 @@
             {/if}
         </div>
         <div id="transcript-buttons-area" class="row centered spaced">
-            <div id="capture-feedback-panel" class="column bordered padded">
-                <span style="font-weight: bold; text-decoration: underline; margin-left: 1rem;"> Step 1: Record or upload your discussion.</span>
+            <div id="capture-feedback-panel" class="column bordered padded centered spaced">
+                <span style="font-weight: bold; text-decoration: underline; margin-left: 1rem;"> Step 1: Upload your discussion.</span>
                 <div class="row centered spaced">
-                    <div class="column centered">
+                    <!-- <div class="column centered">
                         <span >Screen record your discussion</span>
                         <div class="row spaced">
                             <button class="action-button" on:click={async () => {
@@ -805,61 +805,65 @@
                             </button>
                         </div>
                     </div>
-                    <span>or</span>
-                    <div class="column centered spaced">
-                        <label for="file_upload" >Upload your own video or audio: </label>
-                        <div class="row centered spaced">
-                            <input style="width: 50%;" bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept="video/*, audio/*"
-                                on:change={async (e) => {
-                                    files = e.target.files;
-                                    await logAction("FeedbackSelector: Select media file", files);
-                                }}
-                            />
+                    <span>or</span> -->
+                    <div class="row centered spaced">
+                        <div class="column spaced centered">
+                            <label for="file_upload" >Upload your own video or audio: </label>
+                            <div class="row centered spaced">
+                                <input style="width: 50%;" bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept="video/*, audio/*"
+                                    on:change={async (e) => {
+                                        files = e.target.files;
+                                        await logAction("FeedbackSelector: Select media file", files);
+                                    }}
+                                />
 
-                            <div class="column centered">
-                                <label for="to-transcribe">
-                                    Transcribe 
-                                    <a class="tooltip-link" style="color: blue;"
-                                    on:mouseover={() => {tooltip.style.visibility = 'visible';}} 
-                                    on:mouseout={() => {tooltip.style.visibility = 'hidden';}}>
-                                        (?)
-                                    </a>
-                                </label>
-                                <span bind:this={tooltip} class="tooltip">Checking this will automatically transcribe the video/audio.</span>
-                                <input id="to-transcribe" type="checkbox" bind:checked={to_transcribe} on:change={async () => {logAction("FeedbackSelector: Check transcribe",to_transcribe)}}/>
+                                <!-- <div class="column centered">
+                                    <label for="to-transcribe">
+                                        Transcribe 
+                                        <a class="tooltip-link" style="color: blue;"
+                                        on:mouseover={() => {tooltip.style.visibility = 'visible';}} 
+                                        on:mouseout={() => {tooltip.style.visibility = 'hidden';}}>
+                                            (?)
+                                        </a>
+                                    </label>
+                                    <span bind:this={tooltip} class="tooltip">Checking this will automatically transcribe the video/audio.</span>
+                                    <input id="to-transcribe" type="checkbox" bind:checked={to_transcribe} on:change={async () => {logAction("FeedbackSelector: Check transcribe",to_transcribe)}}/>
+                                </div> -->
+                                
+                                <button class="action-button centered column " on:click={async () => {
+                                            is_loading=true;
+                                            await handleMediaUpload();
+                                            is_loading=false;
+                                            await logAction("FeedbackSelector: Upload media", recording);
+                                        }} 
+                                disabled={is_loading || !files || files.length===0}> 
+                                    <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
+                                    Upload file 
+                                </button> 
+                                
                             </div>
-                            
-                            <button class="action-button centered column " on:click={async () => {
-                                        is_loading=true;
-                                        await handleMediaUpload();
-                                        is_loading=false;
-                                        await logAction("FeedbackSelector: Upload media", recording);
-                                    }} 
-                            disabled={is_loading || !files || files.length===0}> 
-                                <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
-                                Upload file 
-                            </button> 
-                            
                         </div>
 
-                        <label for="file_upload" >Upload your own transcript (in .srt only): </label>
-                        <div class="row centered">
-                            <input bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept=" .srt"
-                                on:change={async (e) => {
-                                    files = e.target.files;
-                                    await logAction("FeedbackSelector: Select transcript file", files);
-                                }}
-                            />
-                            <button class="action-button centered column " on:click={async () => {
-                                        is_loading=true;
-                                        await handleTranscriptUpload();
-                                        is_loading=false;
-                                        await logAction("FeedbackSelector: Upload transcript", recording);
-                                    }} 
-                            disabled={is_loading || !files || files.length===0}> 
-                                <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
-                                Upload file
-                            </button> 
+                        <div class="column spaced centered">
+                            <label for="file_upload" >Upload your own transcript (in .srt only): </label>
+                            <div class="row centered">
+                                <input bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept=" .srt"
+                                    on:change={async (e) => {
+                                        files = e.target.files;
+                                        await logAction("FeedbackSelector: Select transcript file", files);
+                                    }}
+                                />
+                                <button class="action-button centered column " on:click={async () => {
+                                            is_loading=true;
+                                            await handleTranscriptUpload();
+                                            is_loading=false;
+                                            await logAction("FeedbackSelector: Upload transcript", recording);
+                                        }} 
+                                disabled={is_loading || !files || files.length===0}> 
+                                    <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
+                                    Upload file
+                                </button> 
+                            </div>
                         </div>
                         
                     </div>
