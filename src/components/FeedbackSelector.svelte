@@ -678,10 +678,10 @@
     
 
     onMount(async () => {
-        if(recording && recording.transcript_list) {
-            await embedTranscriptList(recording.transcript_list);
-            console.log("Transcript list embedded");
-        }
+        // if(recording && recording.transcript_list) {
+        //     await embedTranscriptList(recording.transcript_list);
+        //     console.log("Transcript list embedded");
+        // }
     });
 </script>
 
