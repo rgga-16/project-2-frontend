@@ -1466,7 +1466,7 @@
     //     }
     // ]
 
-    
+    let documents = [];
 
 
 	function next() {
@@ -1482,6 +1482,32 @@
 	}
 
     onMount(async () => {
+        
+        let userInput = window.prompt("Please enter your username: ");
+        if(userInput== null || userInput == "") {
+            alert("Please enter a valid username");
+            throw new Error('Please enter a valid username');
+        }
+
+        let username_response = await fetch('/check_username', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({username: userInput})
+        });
+        if(!username_response.ok) {
+            alert('Failed to check username');
+            throw new Error('Failed to check username');
+        }
+        let username_data = await username_response.json();
+        if(username_data.username_exists) {
+            alert("Welcome back, " + username_data.username);
+        } else {
+            alert("Welcome, " + username_data.username);
+        }
+
+        
         let response = await fetch('/get_session_id', {
             method: 'GET',
             headers: {
@@ -1496,6 +1522,8 @@
         let data = await response.json();
         const session_id = data.session_id;
         alert("Session ID: " + session_id);
+
+        documents = await fetch("/get_documents").then(r => r.json()).then(r => r.documents);
     });
 
 	
@@ -1527,12 +1555,10 @@
             </div>
 
             <div class:gone={currentStep != 1} style="width: 100%; height: 100%;"> 
-                <FeedbackList bind:feedback_list={feedback_list} bind:recording={recording}/>
+                <FeedbackList bind:documents={documents} bind:feedback_list={feedback_list} bind:recording={recording}/>
             </div>
 	</div>
 	<div class="navigation centered spaced bordered row">
-
-			
 
 			<button class:invisible={currentStep != 1} class="action-button row centered" on:click={prev} disabled={currentStep === 0}>
                 <img src="./logos/move-to-the-prev-page-symbol-svgrepo-com.svg" alt="Previous page" class="mini-icon">

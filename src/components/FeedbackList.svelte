@@ -7,6 +7,7 @@
 
     export let feedback_list;
     export let recording; 
+    export let documents = [];
 
     let my_notes = [];
     let feedback_notes = {
@@ -42,7 +43,7 @@
     let image_files;
     let image_input;
 
-    let documents = [];
+    
     let document_files, document_file_input;
 
 
@@ -357,10 +358,10 @@
     }
 
 
-    onMount(async () => {
-        documents = await fetch("/get_documents").then(r => r.json()).then(r => r.documents);
+    // onMount(async () => {
+    //     documents = await fetch("/get_documents").then(r => r.json()).then(r => r.documents);
         
-    });
+    // });
 
     
 </script>
