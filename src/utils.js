@@ -1,3 +1,6 @@
+import {username, userID} from './stores.js';
+import {get} from 'svelte/store';
+
 export async function pause(milliseconds) {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
@@ -6,7 +9,18 @@ export async function saveConversationHistory(conversation_history) {
 
 }
 
+export function setCookie(name,value,daysToExpire) {
+    var expires = "";
+    if(daysToExpire) {
+        var date = new Date();
+        date.setTime(date.getTime() + (daysToExpire*24*60*60*1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+}
+
 export async function logAction(action, data) {
+
     // console.log("Action: " + action);
     // console.log(data);
 
