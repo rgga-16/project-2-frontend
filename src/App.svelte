@@ -1,12 +1,23 @@
 <script>
 	import { onMount } from 'svelte';
+    import {username as usernameStore, userID as userIDStore} from './stores.js';
+    import {setCookie} from './utils.js';
 
 	import FeedbackSelector from './components/FeedbackSelector.svelte';
 	import FeedbackList from './components/FeedbackList.svelte';
 
 	let currentStep = 0;
 	let steps=2;
+    let uname = "";
+    let uID="";
 
+    $: uname = $usernameStore;
+    $: usernameStore.set(uname);
+
+    $: uID = $userIDStore;
+    $: userIDStore.set(uID);
+
+    
 	let recording={};
 	// let recording={
     //     "video": null,
@@ -1482,7 +1493,6 @@
 	}
 
     onMount(async () => {
-        
         let userInput = window.prompt("Please enter your username: ");
         if(userInput== null || userInput == "") {
             alert("Please enter a valid username");
@@ -1500,30 +1510,46 @@
             alert('Failed to check username');
             throw new Error('Failed to check username');
         }
+
         let username_data = await username_response.json();
         if(username_data.username_exists) {
             alert("Welcome back, " + username_data.username);
+            uname = username_data.username;
+            uID = username_data.user_id;
+            setCookie("username", uname, 30);
+            setCookie("user_id", uID, 30);
         } else {
             alert("Welcome, " + username_data.username);
+            uname = username_data.username;
+            uID = username_data.user_id;
+            setCookie("username", uname, 30);
+            setCookie("user_id", uID, 30);
         }
-
         
-        let response = await fetch('/get_session_id', {
-            method: 'GET',
+        let response = await fetch('/get_user_id', {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({
+                'username': uname
+            })
         });
         if(!response.ok) {
-            alert('Failed to get session id');
-            throw new Error('Failed to get session id');
+            alert('Failed to get user id');
+            throw new Error('Failed to get user id');
         } 
-
         let data = await response.json();
-        const session_id = data.session_id;
-        alert("Session ID: " + session_id);
+        const user_id = data.user_id;
+        alert("User ID: " + user_id);
 
-        documents = await fetch("/get_documents").then(r => r.json()).then(r => r.documents);
+        documents = await fetch("/get_documents", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({user_id: user_id})
+        }).then(r => r.json()).then(r => r.documents);
     });
 
 	
