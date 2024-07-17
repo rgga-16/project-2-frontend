@@ -357,12 +357,6 @@
         temp_note="";
     }
 
-
-    // onMount(async () => {
-    //     documents = await fetch("/get_documents").then(r => r.json()).then(r => r.documents);
-        
-    // });
-
     
 </script>
 
@@ -520,6 +514,27 @@
                                     focusOnFeedback(feedback);
                                     await logAction("FeedbackList: Selected feedback", feedback);
                                 }}>
+                                    <span class="timestamp" on:click={
+                                        async () => {
+                                            active_right_tab = 0;
+                                            if("excerpt_reference" in feedback) {
+                                                if("start_timestamp" in feedback.excerpt_reference) {
+                                                    seekTo(feedback.excerpt_reference.start_timestamp, mediaPlayer);
+                                                    await logAction("FeedbackList: Seeked to timestamp", feedback.excerpt_reference.start_timestamp);
+                                                }
+                                            }
+                                        }}>
+                                        {#if "excerpt_reference" in feedback} 
+                                            {#if "start_timestamp" in feedback.excerpt_reference}
+                                                [{feedback.excerpt_reference.start_timestamp}]
+                                            {:else}
+                                                [00:00:00]
+                                            {/if}
+                                        {:else}
+                                            [00:00:00]  
+                                        {/if}
+                                    </span> 
+                                    <br>
                                     <p>"{feedback.quote}"</p>
                                     <br>
                                     <span> - {feedback.speaker} </span>
@@ -575,14 +590,15 @@
                 {:else if active_right_tab===1}
                     <div id="chatbot-tab-content" class="column">
                         <div id="chatbot-header" class="padded row">
-                                <button class="action-button" on:click={()=> {show_chatbot_settings=!show_chatbot_settings;}}>
+                                <button class="action-button" on:click={async ()=> {
+                                        show_chatbot_settings=!show_chatbot_settings;
+                                        await logAction("FeedbackList: Toggled chatbot settings", show_chatbot_settings);
+                                    }}>
                                     <img class="action-icon" 
                                     src={show_chatbot_settings ? "./logos/exit-svgrepo-com.svg" : "./logos/settings-svgrepo-com.svg" }
                                     alt={show_chatbot_settings ? "Exit hatbot settings" : "Open chatbot settings"}
                                     style="width: 2.5rem; height: 2.5rem;">
                                 </button>
-
-                            
                         </div>
 
                         {#if !show_chatbot_settings} 
@@ -662,7 +678,7 @@
                                         <span><strong>Feedback Context:</strong></span>
                                         {#if context}
                                             <div class="suggested-message row "> 
-                                                <span>{context.quote.slice(0, 20)}... </span>
+                                                <span>F#{context.id}:{context.quote.slice(0, 30)}... </span>
                                                 <button on:click|preventDefault={
                                                     async () => {
                                                         await logAction("FeedbackList: Removed context", context);
@@ -679,16 +695,18 @@
                                         <span><strong>Suggested messages:</strong></span>
                                         <div class="suggested-message" on:click|preventDefault={
                                                 async () => {
-                                                    await sendMessage("Can you explain the following feedback?",context);
-                                                    // await logAction("FeedbackList: Sent message", ["Explain feedback", context, image_url]);
+                                                    if(!is_loading) {
+                                                        await sendMessage("Can you paraphrase the following feedback positively?",context);
+                                                    }
                                                 }
                                             } >
                                             Explain feedback.
                                         </div>
                                         <div class="suggested-message" on:click|preventDefault={
                                                 async () => {
-                                                    await sendMessage("Can you brainstorm the tasks to do to address the following feedback?",context);
-                                                    // await logAction("FeedbackList: Sent message", ["Brainstorm actions", context, image_url]);
+                                                    if(!is_loading) {
+                                                        await sendMessage("Can you suggest a task to address the following feedback?",context);
+                                                    }
                                                 }
                                             }>
                                             Brainstorm actions.
@@ -845,17 +863,13 @@
                                                 is_document_loading=true;
                                                 await deleteAllDocuments();
                                                 is_document_loading=false;
-                                                await logAction("FeedbackList: Removed all documents", "Documents");
+                                                await logAction("FeedbackList: Removed all documents", documents);
                                             }}
                                         >
                                             <img src="./logos/delete-svgrepo-com.svg" alt="Remove all documents" class="action-icon">
                                             Remove All
                                         </button>
                                     </div>
-
-
-                                    
-
                                 </div>
 
                             </div>
@@ -880,13 +894,13 @@
                                     {#each my_notes as note, i}
                                         <div class="row padded bordered space-between"> 
                                             <p>{note}</p>
-                                            <div class="row">
-                                                <button> Edit </button>
-                                                <button on:click={async () => {
+                                            <div class="row spaced">
+                                                <!-- <button> Edit </button> -->
+                                                <button class="action-button" on:click={async () => {
                                                     removeNote(i);
                                                     await logAction("FeedbackList: Removed note", note);
                                                 }}> 
-                                                    Delete 
+                                                    <img src="./logos/delete-x-svgrepo-com.svg" alt="Delete note" class="mini-icon">
                                                 </button>
                                             </div>
                                         </div>
@@ -919,6 +933,7 @@
                                 <button class="action-button centered column"
                                     on:click={async () => {
                                         adding_note=true;
+                                        await logAction("FeedbackList: Clicked on My Notes' Add Note button", adding_note);
                                     }}
                                 > 
                                     <img src="./logos/note-svgrepo-com.svg" alt="Add Note" class="action-icon">
@@ -932,7 +947,7 @@
                                         }
                                         my_notes=[];
                                         my_notes=my_notes;
-                                        await logAction("FeedbackList: Removed all notes", "My Notes");
+                                        await logAction("FeedbackList: Removed all notes from My Notes", my_notes);
                                 }}> 
                                     <img src="./logos/delete-svgrepo-com.svg" alt="Delete all notes" class="action-icon">
                                     Delete all 
@@ -949,7 +964,7 @@
                                 <div id={"feedback-note-section-"+key} class="column centered spaced padded" style="width:100%; height:auto;">
                                     <div class="row space-between" style="width:100%; height:auto;">
                                         <span> <strong> Feedback #{key} Notes: </strong> {feedback_list[key-1].quote.slice(0, 70)}...</span>
-                                        <button on:click={async () => {
+                                        <button class="action-button" on:click={async () => {
                                             let string = "Are you sure you want to delete this feedback notes section? This cannot be undone";
                                             if(feedback_notes[key].notes.length > 0) {
                                                 string = "Are you sure you want to delete this feedback notes section? This will delete all notes and cannot be undone.";
@@ -962,7 +977,7 @@
                                             feedback_notes = feedback_notes;
                                             await logAction("FeedbackList: Removed feedback notes section", "Feedback ID"+key);
                                         }}> 
-                                            Delete 
+                                            <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove feedback notes section" class="mini-icon">
                                         </button>
                                     </div>
                                     <div class="column bordered" class:centered={feedback_notes[key].notes.length <= 0} 
@@ -972,12 +987,12 @@
                                                 <div class="row padded bordered space-between"> 
                                                     <p>{note}</p>
                                                     <div class="row spaced">
-                                                        <button class="action-button"> Edit </button>
+                                                        <!-- <button class="action-button"> Edit </button> -->
                                                         <button class="action-button" on:click={async () => {
                                                             removeNote(i, key);
-                                                            await logAction("FeedbackList: Removed note", note);
+                                                            await logAction("FeedbackList: Removed note from Feedback ID"+key, note);
                                                         }}> 
-                                                            Delete 
+                                                            <img src="./logos/delete-x-svgrepo-com.svg" alt="Delete note from Feedback ID"+key class="mini-icon">
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1009,6 +1024,7 @@
                                         <button class="action-button centered column"
                                             on:click={async () => {
                                                 feedback_notes[key].is_adding=true;
+                                                await logAction("FeedbackList: Clicked on Feedback ID"+key+"'s Add Note button", feedback_notes[key].is_adding);
                                             }}
                                         > 
                                             <img src="./logos/note-svgrepo-com.svg" alt="Add Note" class="action-icon">
@@ -1022,7 +1038,7 @@
                                                 }
                                                 feedback_notes[key].notes=[];
                                                 feedback_notes[key].notes=feedback_notes[key].notes;
-                                                await logAction("FeedbackList: Removed all notes", "Feedback ID"+key);
+                                                await logAction("FeedbackList: Removed all notes from Feedback ID"+key, feedback_notes[key].notes);
                                             }}> 
                                             <img src="./logos/delete-svgrepo-com.svg" alt="Delete all notes" class="action-icon">
                                             Delete all  
