@@ -992,7 +992,7 @@
                                                             removeNote(i, key);
                                                             await logAction("FeedbackList: Removed note from Feedback ID"+key, note);
                                                         }}> 
-                                                            <img src="./logos/delete-x-svgrepo-com.svg" alt="Delete note from Feedback ID"+key class="mini-icon">
+                                                            <img src="./logos/delete-x-svgrepo-com.svg" alt="Delete note from Feedback ID{key}" class="mini-icon">
                                                         </button>
                                                     </div>
                                                 </div>
