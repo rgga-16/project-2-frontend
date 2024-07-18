@@ -10,11 +10,7 @@
     export let documents = [];
 
     let my_notes = [];
-    let feedback_notes = {
-        1: {notes:["This is a note", "This is another note"], is_adding:false},
-        2: {notes:["This is a note", "This is another note"], is_adding:false},
-        3: {notes:["This is a note", "This is another note"], is_adding:false},
-    };
+    let feedback_notes = {};
     
     let show_chatbot_settings=false;
     let chatbot_models = {
@@ -312,8 +308,14 @@
                 console.error(`Error deleting document ${doc}:`, error);
                 // Optionally, break the loop or continue to the next document
             }
-            console.log(documents);
         }
+
+        if(documents.length === 1) {
+            await deleteDocument(documents[0], 0);
+        }
+
+
+
         document_load_status="Done!";
         document_load_progress=100;
         await pause(1000);
