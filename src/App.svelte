@@ -1,23 +1,15 @@
 <script>
 	import { onMount } from 'svelte';
-    import {username as usernameStore, userID as userIDStore} from './stores.js';
     import {setCookie} from './utils.js';
 
 	import FeedbackSelector from './components/FeedbackSelector.svelte';
 	import FeedbackList from './components/FeedbackList.svelte';
 
 	let currentStep = 0;
-	let steps=2;
+	let steps=3;
     let uname = "";
     let uID="";
 
-    $: uname = $usernameStore;
-    $: usernameStore.set(uname);
-
-    $: uID = $userIDStore;
-    $: userIDStore.set(uID);
-
-    
 	let recording={};
 	// let recording={
     //     "video": null,
@@ -1492,64 +1484,133 @@
 		}
 	}
 
-    onMount(async () => {
-        let userInput = window.prompt("Please enter your username: ");
-        if(userInput== null || userInput == "") {
+    async function register() {
+        if(uname == null || uname == "") {
             alert("Please enter a valid username");
             throw new Error('Please enter a valid username');
         }
 
-        let username_response = await fetch('/check_username', {
+        let username_response = await fetch('/register', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({username: userInput})
+            body: JSON.stringify({username: uname})
         });
+
+        const data = await username_response.json();
         if(!username_response.ok) {
-            alert('Failed to check username');
-            throw new Error('Failed to check username');
+            alert(data.message);
+        } else if (username_response.ok) {
+            alert(data.message);
+            uID = data.user_id;
+            setCookie("username", uname, 30);
+            setCookie("user_id", uID, 30);
+
+            documents = await fetch("/get_documents", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({user_id: uID})
+            }).then(r => r.json()).then(r => r.documents);
+            currentStep=1;
+        }
+    }
+
+    async function login() {
+        if(uname == null || uname == "") {
+            alert("Please enter a valid username");
+            throw new Error('Please enter a valid username');
         }
 
-        let username_data = await username_response.json();
-        if(username_data.username_exists) {
-            alert("Welcome back, " + username_data.username);
-            uname = username_data.username;
-            uID = username_data.user_id;
-            setCookie("username", uname, 30);
-            setCookie("user_id", uID, 30);
-        } else {
-            alert("Welcome, " + username_data.username);
-            uname = username_data.username;
-            uID = username_data.user_id;
-            setCookie("username", uname, 30);
-            setCookie("user_id", uID, 30);
-        }
-        
-        let response = await fetch('/get_user_id', {
+        let username_response = await fetch('/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                'username': uname
-            })
+            body: JSON.stringify({username: uname})
         });
-        if(!response.ok) {
-            alert('Failed to get user id');
-            throw new Error('Failed to get user id');
-        } 
-        let data = await response.json();
-        const user_id = data.user_id;
-        alert("User ID: " + user_id);
 
-        documents = await fetch("/get_documents", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({user_id: user_id})
-        }).then(r => r.json()).then(r => r.documents);
+        const data = await username_response.json();
+        if(!username_response.ok) {
+            alert(data.message);
+        } else if (username_response.ok) {
+            alert(data.message);
+            uID = data.user_id;
+            setCookie("username", uname, 30);
+            setCookie("user_id", uID, 30);
+            
+            documents = await fetch("/get_documents", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({user_id: uID})
+            }).then(r => r.json()).then(r => r.documents);
+            currentStep=1;
+        }
+
+    }
+
+    onMount(async () => {
+        // let userInput = window.prompt("Please enter your username: ");
+        // if(userInput== null || userInput == "") {
+        //     alert("Please enter a valid username");
+        //     throw new Error('Please enter a valid username');
+        // }
+
+        // let username_response = await fetch('/check_username', {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': 'application/json'
+        //     },
+        //     body: JSON.stringify({username: userInput})
+        // });
+        // if(!username_response.ok) {
+        //     alert('Failed to check username');
+        //     throw new Error('Failed to check username');
+        // }
+
+        // let username_data = await username_response.json();
+        // if(username_data.username_exists) {
+        //     alert("Welcome back, " + username_data.username);
+        //     uname = username_data.username;
+        //     uID = username_data.user_id;
+        //     setCookie("username", uname, 30);
+        //     setCookie("user_id", uID, 30);
+        // } else {
+        //     alert("Welcome, " + username_data.username);
+        //     uname = username_data.username;
+        //     uID = username_data.user_id;
+        //     setCookie("username", uname, 30);
+        //     setCookie("user_id", uID, 30);
+        // }
+        
+        // let response = await fetch('/get_user_id', {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': 'application/json'
+        //     },
+        //     body: JSON.stringify({
+        //         'username': uname
+        //     })
+        // });
+        // if(!response.ok) {
+        //     alert('Failed to get user id');
+        //     throw new Error('Failed to get user id');
+        // } 
+        // let data = await response.json();
+        // const user_id = data.user_id;
+        // alert("User ID: " + user_id);
+
+        // documents = await fetch("/get_documents", {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': 'application/json'
+        //     },
+        //     body: JSON.stringify({user_id: user_id})
+        // }).then(r => r.json()).then(r => r.documents);
     });
 
 	
@@ -1576,22 +1637,44 @@
 
 <main>
 	<div class="carousel-container">
-            <div class:gone={currentStep != 0} style="width: 100%; height: 100%;">
+
+            <div class="centered spaced" class:gone={currentStep != 0} style="width: 100%; height: 100%;">
+                <div class="column centered spaced" style="width: 75%; height: 75%;">
+                    <label for="username"> Enter your username </label>
+                    <input type="text" name="username" id="username" bind:value={uname}>
+                    <div class="row">
+                        <button on:click={async() => {
+                            await register();
+                        }}> 
+                            Register 
+                        </button>
+
+                        <button on:click={async() => {
+                            await login();
+                        }}> 
+                            Login 
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class:gone={currentStep != 1} style="width: 100%; height: 100%;">
                 <FeedbackSelector bind:recording={recording} bind:feedback_list={feedback_list}/>
             </div>
 
-            <div class:gone={currentStep != 1} style="width: 100%; height: 100%;"> 
+            <div class:gone={currentStep != 2} style="width: 100%; height: 100%;"> 
                 <FeedbackList bind:documents={documents} bind:feedback_list={feedback_list} bind:recording={recording}/>
             </div>
 	</div>
 	<div class="navigation centered spaced bordered row">
 
-			<button class:invisible={currentStep != 1} class="action-button row centered" on:click={prev} disabled={currentStep === 0}>
+			<button class:invisible={currentStep !=2 || currentStep==0 } class="action-button row centered" on:click={() => {currentStep=1}} disabled={currentStep === 0}>
                 <img src="./logos/move-to-the-prev-page-symbol-svgrepo-com.svg" alt="Previous page" class="mini-icon">
                 Select Feedback 
             </button>
 
-            <button class:invisible={currentStep != 0} class="action-button row centered" on:click={next} disabled={currentStep === steps.length - 1 || feedback_list.length <=0}>
+            <button class:invisible={currentStep !=1 || currentStep==0 } class="action-button row centered" on:click={() => {currentStep=2}} disabled={currentStep === steps.length - 1 || feedback_list.length <=0}>
                 View Feedback List
                 <img src="./logos/move-to-the-next-page-symbol-svgrepo-com.svg" alt="Next page" class="mini-icon">
             </button>
