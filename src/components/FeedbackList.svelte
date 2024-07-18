@@ -292,11 +292,11 @@
             body: JSON.stringify({title: title})
         });
         if (!response.ok) {
-            return "failed";
+            return console.log(`Failed to delete document ${title}`);
         } 
 
         // Remove document at idx
-        documents = documents.splice(idx, 1);
+        documents.splice(idx, 1);
         documents=documents;
         return title
     }
@@ -306,7 +306,13 @@
         for(let i=0; i<documents.length; i++) {
             let doc = documents[i];
             document_load_progress = (i)/documents.length*100;
-            await deleteDocument(doc,i);
+            try {
+                await deleteDocument(doc, i);
+            } catch (error) {
+                console.error(`Error deleting document ${doc}:`, error);
+                // Optionally, break the loop or continue to the next document
+            }
+            console.log(documents);
         }
         document_load_status="Done!";
         document_load_progress=100;

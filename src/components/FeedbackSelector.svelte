@@ -30,7 +30,8 @@
     let videoPath;
     let micPath; 
 
-    let files, file_input;
+    let media_files, mediafile_input;
+    let transcript_files, transcript_fileinput;
 
     let is_loading=false;
     let load_status = "";
@@ -271,8 +272,8 @@
     }
 
     async function handleMediaUpload() {
-        if(files) {
-            for (const file of files) {
+        if(media_files) {
+            for (const file of media_files) {
                 console.log(file.type);
                 if(file.type.includes('video')) {
                     if(recording || "video" in recording || "audio" in recording || "transcript_list" in recording || feedback_list.length > 0) {
@@ -385,8 +386,8 @@
                 } 
             }
             // Clear the file input
-            files=null;
-            file_input.value='';
+            media_files=null;
+            mediafile_input.value='';
             
         }
         console.log("Recording", recording);
@@ -396,8 +397,8 @@
     }
 
     async function handleTranscriptUpload() {
-        if(files) {
-            for (const file of files) {
+        if(transcript_files) {
+            for (const file of transcript_files) {
                 console.log(file.type);
                 if(file.name.endsWith('.srt')) {
 
@@ -449,8 +450,8 @@
 
             }
             // Clear the file input
-            files=null;
-            file_input.value='';
+            transcript_files=null;
+            transcript_fileinput.value='';
             
         }
         console.log("Recording", recording);
@@ -810,10 +811,10 @@
                         <div class="column spaced centered">
                             <label for="file_upload" >Upload your own video or audio: </label>
                             <div class="row centered spaced">
-                                <input style="width: 50%;" bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept="video/*, audio/*"
+                                <input style="width: 50%;" bind:value={media_files} bind:this={mediafile_input} name="mediafile_upload"type="file" id="mediafile_upload" accept="video/*, audio/*"
                                     on:change={async (e) => {
-                                        files = e.target.files;
-                                        await logAction("FeedbackSelector: Select media file", files);
+                                        media_files = e.target.files;
+                                        await logAction("FeedbackSelector: Select media file", media_files);
                                     }}
                                 />
 
@@ -836,7 +837,7 @@
                                             is_loading=false;
                                             await logAction("FeedbackSelector: Upload media", recording);
                                         }} 
-                                disabled={is_loading || !files || files.length===0}> 
+                                disabled={is_loading || !media_files || media_files.length===0}> 
                                     <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
                                     Upload file 
                                 </button> 
@@ -847,10 +848,10 @@
                         <div class="column spaced centered">
                             <label for="file_upload" >Upload your own transcript (in .srt only): </label>
                             <div class="row centered">
-                                <input bind:files bind:this={file_input} name="file_upload"type="file" id="file_upload" accept=" .srt"
+                                <input bind:value={transcript_files} bind:this={transcript_fileinput} name="transcirptfile_upload"type="file" id="transcriptfile_upload" accept=" .srt"
                                     on:change={async (e) => {
-                                        files = e.target.files;
-                                        await logAction("FeedbackSelector: Select transcript file", files);
+                                        transcript_files = e.target.files;
+                                        await logAction("FeedbackSelector: Select transcript file", transcript_files);
                                     }}
                                 />
                                 <button class="action-button centered column " on:click={async () => {
@@ -859,7 +860,7 @@
                                             is_loading=false;
                                             await logAction("FeedbackSelector: Upload transcript", recording);
                                         }} 
-                                disabled={is_loading || !files || files.length===0}> 
+                                disabled={is_loading || !transcript_files || transcript_files.length===0}> 
                                     <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
                                     Upload file
                                 </button> 

@@ -1,4 +1,4 @@
-import {username, userID} from './stores.js';
+
 import {get} from 'svelte/store';
 
 export async function pause(milliseconds) {
