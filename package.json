@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "html2canvas": "^1.4.1",
+    "md-block": "^0.0.1",
     "sirv-cli": "^2.0.0",
     "svelte-markdown": "^0.2.3"
   }
