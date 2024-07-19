@@ -589,10 +589,21 @@
                     deHighlightFeedback(dialogue_id, feedback_quote);
                     return feedback;
                 }
-            }
-            
+            }  
         }
         return "Error: Feedback not found for selection: " + selection;
+    }
+
+    function removeAllFeedback() {
+        for (let i = 0; i < feedback_list.length; i++) {
+            let feedback = feedback_list[i];
+            let dialogue_id = parseInt(feedback.dialogue_id);
+            let feedback_quote = feedback.quote;
+            deHighlightFeedback(dialogue_id, feedback_quote);
+
+            feedback_list.splice(i, 1);
+            feedback_list=feedback_list;
+        }
     }
 
     function deHighlightFeedback(dialogue_id, feedback_quote) {
@@ -953,6 +964,16 @@
                         > 
                             <img src="./logos/erase-svgrepo-com.svg" alt="De-highlight Feedback" class="logo">
                             Remove <br> Feedback
+                        </button>
+                        <button class="action-button"
+                            disabled={!recording || !recording.transcript_list || is_loading}
+                            on:click={async () => {
+                                removeAllFeedback();
+                                await logAction("FeedbackSelector: Removed all feedback", feedback_list);
+                            }}
+                        > 
+                            <img src="./logos/delete-svgrepo-com.svg" alt="Delete all Feedback" class="logo">
+                            Remove all <br> Feedback
                         </button>
                     </div>
                 </div>
