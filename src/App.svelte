@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-    import {setCookie} from './utils.js';
+    import {setCookie, getCookie} from './utils.js';
 
 	import FeedbackSelector from './components/FeedbackSelector.svelte';
 	import FeedbackList from './components/FeedbackList.svelte';
@@ -1471,6 +1471,11 @@
 
     let documents = [];
 
+    let chatbot_messages = [{
+        "content": "You are an expert senior interior designer who is tasked to assist less experienced interior designers like students and junior interior designers with their work by answering their questions on a wide range of interior design topics. ",
+        "role": "system"
+    }];
+
 
 	function next() {
 		if (currentStep < steps - 1) {
@@ -1507,13 +1512,7 @@
             setCookie("username", uname, 30);
             setCookie("user_id", uID, 30);
 
-            documents = await fetch("/get_documents", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({user_id: uID})
-            }).then(r => r.json()).then(r => r.documents);
+            await loadFiles(uID);
             currentStep=1;
         }
     }
@@ -1541,92 +1540,59 @@
             setCookie("username", uname, 30);
             setCookie("user_id", uID, 30);
             
-            documents = await fetch("/get_documents", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({user_id: uID})
-            }).then(r => r.json()).then(r => r.documents);
+            await loadFiles(uID);
             currentStep=1;
         }
+    }
 
+    function logout() {
+        setCookie("username", "", 0);
+        setCookie("user_id", "", 0);
+
+        
+        uname = "";
+        uID = "";
+        documents = [];
+        feedback_list = [];
+        chatbot_messages = [];
+        currentStep = 0;
+    }
+
+    async function loadFiles(user_id) {
+        documents = await fetch("/get_documents", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({user_id: user_id})
+        }).then(r => r.json()).then(r => r.documents);
     }
 
     onMount(async () => {
-        // let userInput = window.prompt("Please enter your username: ");
-        // if(userInput== null || userInput == "") {
-        //     alert("Please enter a valid username");
-        //     throw new Error('Please enter a valid username');
-        // }
-
-        // let username_response = await fetch('/check_username', {
-        //     method: 'POST',
-        //     headers: {
-        //         'Content-Type': 'application/json'
-        //     },
-        //     body: JSON.stringify({username: userInput})
-        // });
-        // if(!username_response.ok) {
-        //     alert('Failed to check username');
-        //     throw new Error('Failed to check username');
-        // }
-
-        // let username_data = await username_response.json();
-        // if(username_data.username_exists) {
-        //     alert("Welcome back, " + username_data.username);
-        //     uname = username_data.username;
-        //     uID = username_data.user_id;
-        //     setCookie("username", uname, 30);
-        //     setCookie("user_id", uID, 30);
-        // } else {
-        //     alert("Welcome, " + username_data.username);
-        //     uname = username_data.username;
-        //     uID = username_data.user_id;
-        //     setCookie("username", uname, 30);
-        //     setCookie("user_id", uID, 30);
-        // }
-        
-        // let response = await fetch('/get_user_id', {
-        //     method: 'POST',
-        //     headers: {
-        //         'Content-Type': 'application/json'
-        //     },
-        //     body: JSON.stringify({
-        //         'username': uname
-        //     })
-        // });
-        // if(!response.ok) {
-        //     alert('Failed to get user id');
-        //     throw new Error('Failed to get user id');
-        // } 
-        // let data = await response.json();
-        // const user_id = data.user_id;
-        // alert("User ID: " + user_id);
-
-        // documents = await fetch("/get_documents", {
-        //     method: 'POST',
-        //     headers: {
-        //         'Content-Type': 'application/json'
-        //     },
-        //     body: JSON.stringify({user_id: user_id})
-        // }).then(r => r.json()).then(r => r.documents);
+        uname = getCookie("username");
+        uID = getCookie("user_id");
+        if(uname != null && uname != "") {
+            await loadFiles(uID);
+            currentStep=1;
+        }
     });
-
-	
 </script>
 
 <style>
+    .header {
+        height: 5%;
+        justify-content: flex-end;
+        align-items: center;
+    }
 	.carousel-container {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		height: 95%;
+		height: 90%;
 	}
 
 	.navigation {
-		/* margin-top: 10px; */
 		height: 5%;
 	}
 
@@ -1636,8 +1602,13 @@
 </style>
 
 <main>
+    <div class:gone={currentStep==0} class="header spaced bordered row padded"> 
+        <h5> Welcome, {uname}</h5> 
+        <button on:click={() => logout()} class="row mini-padded">
+            Logout
+        </button>
+    </div>
 	<div class="carousel-container">
-
             <div class="centered spaced" class:gone={currentStep != 0} style="width: 100%; height: 100%;">
                 <div class="column centered spaced" style="width: 75%; height: 75%;">
                     <label for="username"> Enter your username </label>
@@ -1664,11 +1635,10 @@
             </div>
 
             <div class:gone={currentStep != 2} style="width: 100%; height: 100%;"> 
-                <FeedbackList bind:documents={documents} bind:feedback_list={feedback_list} bind:recording={recording}/>
+                <FeedbackList bind:chatbot_messages={chatbot_messages} bind:documents={documents} bind:feedback_list={feedback_list} bind:recording={recording}/>
             </div>
 	</div>
 	<div class="navigation centered spaced bordered row">
-
 			<button class:invisible={currentStep !=2 || currentStep==0 } class="action-button row centered" on:click={() => {currentStep=1}} disabled={currentStep === 0}>
                 <img src="./logos/move-to-the-prev-page-symbol-svgrepo-com.svg" alt="Previous page" class="mini-icon">
                 Select Feedback 
@@ -1678,7 +1648,6 @@
                 View Feedback List
                 <img src="./logos/move-to-the-next-page-symbol-svgrepo-com.svg" alt="Next page" class="mini-icon">
             </button>
-
 	</div>
 </main>
 

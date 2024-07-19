@@ -8,6 +8,10 @@
     export let feedback_list;
     export let recording; 
     export let documents = [];
+    export let chatbot_messages = [{
+        "content": "You are an expert senior interior designer who is tasked to assist less experienced interior designers like students and junior interior designers with their work by answering their questions on a wide range of interior design topics. ",
+        "role": "system"
+    }];
 
     let my_notes = [];
     let feedback_notes = {};
@@ -15,9 +19,10 @@
     let show_chatbot_settings=false;
     let chatbot_models = {
         "GPT-4o":"gpt-4o",
+        "GPT-4o Mini": "gpt-4o-mini",
         "Interior Designer GPT":"ft:gpt-3.5-turbo-0125:im-lab:int-des-full:9b2qf12W"
     }
-    let selected_chatbot="GPT-4o";
+    let selected_chatbot="GPT-4o Mini";
     let chatbot_temperature = 0.0;
     let chatbot_max_output_tokens = 256; 
 
@@ -28,10 +33,7 @@
 
     let active_right_tab=0;  
     let active_left_tab=0;
-    let chatbot_messages = [{
-        "content": "You are an expert senior interior designer who is tasked to assist less experienced interior designers like students and junior interior designers with their work by answering their questions on a wide range of interior design topics. ",
-        "role": "system"
-    }];
+    
 
     let context;
     let selected_image;
@@ -597,16 +599,25 @@
                     
                 {:else if active_right_tab===1}
                     <div id="chatbot-tab-content" class="column">
-                        <div id="chatbot-header" class="padded row">
-                                <button class="action-button" on:click={async ()=> {
-                                        show_chatbot_settings=!show_chatbot_settings;
-                                        await logAction("FeedbackList: Toggled chatbot settings", show_chatbot_settings);
-                                    }}>
-                                    <img class="action-icon" 
-                                    src={show_chatbot_settings ? "./logos/exit-svgrepo-com.svg" : "./logos/settings-svgrepo-com.svg" }
-                                    alt={show_chatbot_settings ? "Exit hatbot settings" : "Open chatbot settings"}
-                                    style="width: 2.5rem; height: 2.5rem;">
-                                </button>
+                        <div id="chatbot-header" class="padded row space-between">
+                            <div class:gone={show_chatbot_settings} class="row spaced centered" style="height: auto; width: 100%;">
+                                <span>Model: </span>
+                                <select bind:value={selected_chatbot} >
+                                    {#each Object.keys(chatbot_models) as model}
+                                        <option value={model}>{model}</option>
+                                    {/each}
+                                </select>
+                            </div>
+                            
+                            <button class="action-button" on:click={async ()=> {
+                                    show_chatbot_settings=!show_chatbot_settings;
+                                    await logAction("FeedbackList: Toggled chatbot settings", show_chatbot_settings);
+                                }}>
+                                <img class="action-icon" 
+                                src={show_chatbot_settings ? "./logos/exit-svgrepo-com.svg" : "./logos/settings-svgrepo-com.svg" }
+                                alt={show_chatbot_settings ? "Exit chatbot settings" : "Open chatbot settings"}
+                                style="width: 2.5rem; height: 2.5rem;">
+                            </button>
                         </div>
 
                         {#if !show_chatbot_settings} 
@@ -635,20 +646,22 @@
                                                     {/if}
                                                 </div>
                                                 <div class="row spaced">
-                                                    <button class="action-button column centered" on:click={async () => {
+                                                    <button class="action-button row spaced centered" on:click={async () => {
                                                         active_right_tab = 2;
                                                         addNote(message.role+": "+message.content);
                                                         await logAction("FeedbackList: Added note to My Notes", message);                                                        
                                                     }}> 
+                                                        <small> Add to My Notes </small>
                                                         <img src="./logos/note-svgrepo-com.svg" alt="Add to my notes" class="mini-icon">
                                                     </button>
                                                     
                                                     {#if "context" in message}
-                                                        <button class="action-button column centered" on:click={async () => {
+                                                        <button class="action-button row spaced centered" on:click={async () => {
                                                             active_right_tab = 2;
                                                             addNote(message.role+": "+message.content, "id" in message.context ? message.context.id : null);
                                                             await logAction("FeedbackList: Added note to Feedback ID"+message.context.id, message);                                                        
                                                         }}> 
+                                                            <small> Add to F#{message.context.id} Notes </small>
                                                             <img src="./logos/note-svgrepo-com.svg" alt="Add feedback note" class="mini-icon">
                                                         </button>
                                                     {/if}
@@ -662,7 +675,8 @@
                                                 </div>
                                             </div>
                                             <div class="row">
-                                                <p> <strong> {message.role}: </strong> {message.content} </p>
+                                                <strong> {message.role}: </strong>
+                                                <md-block>  {message.content} </md-block>
                                             </div>
                                             {#if "image" in message && message.role==="user"}
                                                 <div class="column centered" style="width: 100%;">
@@ -782,7 +796,6 @@
                             <div id="chatbot-settings" class="column padded spaced" style="width: 100%; height: 95%;">
                                 <div id="chatbot-configurations" class="column centered spaced padded bordered">
                                     <span> <strong> Configurations </strong> </span>
-
                                     <div class="row spaced centered" style="height: auto; width: 100%;">
                                         <span>Model: </span>
                                         <select bind:value={selected_chatbot} >
@@ -843,7 +856,7 @@
                                                 is_document_loading=true;
                                                 await addDocument(e);
                                                 is_document_loading=false;
-                                                logAction("FeedbackList: Added document", e.target.files);
+                                                await logAction("FeedbackList: Added document", e.target.files);
                                             }}
                                         />
                                         <button disabled={is_document_loading} class="centered spaced column action-button"
@@ -1080,6 +1093,7 @@
 <style>
 
     #feedback-list-page{
+        padding-top: 1rem;
         position:relative;
         display:flex;
         height:100%;
@@ -1087,6 +1101,7 @@
     }
 
     #left-panel{
+        
         position:relative;
         height:100%;
         width:60%;

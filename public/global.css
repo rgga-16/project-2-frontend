@@ -101,6 +101,10 @@ main{
 	padding: 1rem;
 }
 
+.mini-padded{
+	padding: 0.25rem;
+}
+
 .overflow {
 	overflow: auto;
 }
