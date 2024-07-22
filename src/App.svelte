@@ -1477,18 +1477,6 @@
     }];
 
 
-	function next() {
-		if (currentStep < steps - 1) {
-		currentStep += 1;
-		}
-	}
-
-	function prev() {
-		if (currentStep > 0) {
-		currentStep -= 1;
-		}
-	}
-
     async function register() {
         if(uname == null || uname == "") {
             alert("Please enter a valid username");
@@ -1512,7 +1500,12 @@
             setCookie("username", uname, 30);
             setCookie("user_id", uID, 30);
 
-            await loadFiles(uID);
+            documents = await fetch("/get_documents", {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            }).then(r => r.json()).then(r => r.documents);
             currentStep=1;
         }
     }
@@ -1560,21 +1553,41 @@
 
     async function loadFiles(user_id) {
         documents = await fetch("/get_documents", {
-            method: 'POST',
+            method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({user_id: user_id})
         }).then(r => r.json()).then(r => r.documents);
+
+        if (Object.keys(recording).length <= 0) {
+            let recording_response = await fetch("/get_recording", {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            })
+            let recording_json = await recording_response.json();
+            recording = recording_json["recording"];
+            console.log(recording);
+        }
+            
+
+        // feedback_list = await fetch("get/feedback", {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': 'application/json'
+        //     },
+        //     body: JSON.stringify({user_id: user_id})
+        // }).then(r => r.json()).then(r => r.feedback_list);
     }
 
     onMount(async () => {
-        uname = getCookie("username");
-        uID = getCookie("user_id");
-        if(uname != null && uname != "") {
-            await loadFiles(uID);
-            currentStep=1;
-        }
+        // uname = getCookie("username");
+        // uID = getCookie("user_id");
+        // if(uname != null && uname != "") {
+        //     await loadFiles(uID);
+        //     currentStep=1;
+        // }
     });
 </script>
 
@@ -1630,9 +1643,11 @@
                 </div>
             </div>
 
-            <div class:gone={currentStep != 1} style="width: 100%; height: 100%;">
-                <FeedbackSelector bind:recording={recording} bind:feedback_list={feedback_list}/>
-            </div>
+            {#if currentStep ===1}
+                <div class:gone={currentStep != 1} style="width: 100%; height: 100%;">
+                    <FeedbackSelector bind:recording={recording} bind:feedback_list={feedback_list}/>
+                </div>
+            {/if}
 
             <div class:gone={currentStep != 2} style="width: 100%; height: 100%;"> 
                 <FeedbackList bind:chatbot_messages={chatbot_messages} bind:documents={documents} bind:feedback_list={feedback_list} bind:recording={recording}/>

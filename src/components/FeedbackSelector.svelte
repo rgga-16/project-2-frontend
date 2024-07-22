@@ -37,20 +37,6 @@
     let load_status = "";
     let progress = 0;
 
-    
-
-    async function incrementRecordNumber() {
-        let response = await fetch('/increment_record_number', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        if(!response.ok) {
-            throw new Error('Failed to increment record number');
-        } 
-    }
-
     async function sendVideoToServer(videoBlobs) {
         const vidblob = new Blob(videoBlobs, {type: 'video/webm'});
         
@@ -251,7 +237,14 @@
         load_status="Done!"
         progress=100;
         await pause(1500); 
-        let newRecording = {video: videoSrc, audio: micSrc, transcript: simplified_transcript, transcript_list : transcript_list};
+        let newRecording = {
+            video: videoSrc, 
+            video_path: videoPath,
+            audio: micSrc, 
+            audio_path: micPath,
+            transcript: simplified_transcript, 
+            transcript_list : transcript_list
+        };
         recording=newRecording;
         // await incrementRecordNumber();
     }
@@ -269,6 +262,47 @@
         } 
         const json = await response.json();
         return [json["audiopath"], json["videopath"]];
+    }
+
+    async function saveRecording() {
+        console.log(recording);
+        const response = await fetch('/save_recording', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({recording:recording})
+        });
+        if(!response.ok) {
+            throw new Error('Failed to save recording');
+        }
+
+        let response_json = await response.json();
+        if("message" in response_json) {
+            console.log(response_json["message"]);
+        }
+        return response_json["message"];
+    }
+
+    async function saveTranscriptList() {
+        console.log(recording.transcript_list);
+        let transcript_list = recording.transcript_list; 
+
+        const response = await fetch('/save_transcript_list', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify ({transcript_list: transcript_list})
+        });
+        if(!response.ok) {
+            throw new Error('Failed to save transcript list');
+        }
+        let response_json = await response.json();
+        if("message" in response_json) {
+            console.log(response_json["message"]);
+        }
+        return response_json["message"];
     }
 
     async function handleMediaUpload() {
@@ -290,11 +324,12 @@
                     load_status="Uploading video...";
                     progress= to_transcribe ? 20 : 50;
                     [micPath, videoPath] = await extractAudioFromVideo(file);
-                    if(!micPath) {
+                    if(!micPath || !videoPath) {
                         micPath = null;
                         videoPath = null;
                         throw new Error('Failed to extract audio from video');
                     } 
+
                     let micSrc = await fetchAudio(micPath);
 
                     let transcript=null; 
@@ -321,7 +356,14 @@
                     progress=100;
                     pause(1500);
                     progress=0;
-                    let newRecording = {video: videoSrc, audio: micSrc, transcript: transcript, transcript_list:transcript_list};
+                    let newRecording = {
+                        video: videoSrc, 
+                        video_path: videoPath,
+                        audio: micSrc, 
+                        audio_path: micPath,
+                        transcript: transcript, 
+                        transcript_list:transcript_list
+                    };
                     recording=newRecording;
                     micPath=null;
                     videoPath=null;
@@ -377,7 +419,14 @@
                     progress=100; 
                     await pause(1500);
                     progress=0;
-                    let newRecording = {video: null, audio: audioSrc, transcript: transcript, transcript_list:transcript_list};
+                    let newRecording = {
+                        video: null,
+                        video_path: null,
+                        audio: audioSrc, 
+                        audio_path: micPath,
+                        transcript: transcript, 
+                        transcript_list:transcript_list
+                    };
                     recording = newRecording;
                     micPath=null;
                     videoPath=null;
@@ -425,24 +474,39 @@
                         await pause(1500); 
 
                         let transcript_list = await convertTranscriptToList(transcript); 
-                        console.log(transcript_list);
+
+                        let newRecording = {
+                            video: null, 
+                            video_path: null,
+                            audio: null, 
+                            audio_path: null,
+                            transcript: transcript, 
+                            transcript_list:transcript_list
+                        };
+                        if(recording && (("video" in recording && recording.video) || ("audio" in recording && recording.audio))) {
+                            recording.transcript_list = transcript_list;
+                            recording.transcript_list=recording.transcript_list;
+                            recording.transcript=transcript;
+                            recording.transcript=recording.transcript;
+                            recording=recording;
+                            recording=recording;
+                        } else {
+                            recording = newRecording;
+                        }
+
+
                         load_status="Saving transcript as a database (this may take a while) ... "
                         progress=60;
                         await embedTranscriptList(transcript_list);
+
+                        // await saveTranscriptList();
+                        await saveRecording();
                         console.log("Transcript list embedded")
                         load_status="Done!"
                         progress=100;
                         await pause(500); 
                         progress=0;
-                        let newRecording = {video: null, audio: null, transcript: transcript, transcript_list:transcript_list};
-                        if(recording && (("video" in recording && recording.video) || ("audio" in recording && recording.audio))) {
-                            recording.transcript_list = transcript_list;
-                            recording.transcript=transcript;
-                            recording=recording;
-                        } else {
-                            recording = newRecording;
-                        }
-                        // await incrementRecordNumber();
+                        
                         is_loading=false;
                     }
                     reader.readAsText(file);
@@ -568,6 +632,19 @@
         }
     }
 
+    function saveFeedbackList(feedback_list) {
+        const response = fetch("/save_feedback_list", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({feedback_list: feedback_list})
+        });
+        if(!response.ok) {
+            throw new Error("Failed to save feedback list");
+        }
+    }
+
 
     function removeFeedback() {
         const selection = window.getSelection().toString();
@@ -690,10 +767,7 @@
     
 
     onMount(async () => {
-        // if(recording && recording.transcript_list) {
-        //     await embedTranscriptList(recording.transcript_list);
-        //     console.log("Transcript list embedded");
-        // }
+        console.log(recording);
     });
 </script>
 
@@ -825,6 +899,8 @@
                                 <input style="width: 50%;" bind:value={media_files} bind:this={mediafile_input} name="mediafile_upload"type="file" id="mediafile_upload" accept="video/*, audio/*"
                                     on:change={async (e) => {
                                         media_files = e.target.files;
+                                        console.log(media_files);
+                                        
                                         await logAction("FeedbackSelector: Select media file", media_files);
                                     }}
                                 />
@@ -845,7 +921,9 @@
                                 <button class="action-button centered column " on:click={async () => {
                                             is_loading=true;
                                             await handleMediaUpload();
+                                            
                                             is_loading=false;
+                                            await saveRecording();
                                             await logAction("FeedbackSelector: Upload media", recording);
                                         }} 
                                 disabled={is_loading || !media_files || media_files.length===0}> 
@@ -869,7 +947,9 @@
                                             is_loading=true;
                                             await handleTranscriptUpload();
                                             is_loading=false;
+                                            console.log(recording);
                                             await logAction("FeedbackSelector: Upload transcript", recording);
+                                            
                                         }} 
                                 disabled={is_loading || !transcript_files || transcript_files.length===0}> 
                                     <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
