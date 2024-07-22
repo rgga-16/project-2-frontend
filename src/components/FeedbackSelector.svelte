@@ -284,26 +284,6 @@
         return response_json["message"];
     }
 
-    async function saveTranscriptList() {
-        console.log(recording.transcript_list);
-        let transcript_list = recording.transcript_list; 
-
-        const response = await fetch('/save_transcript_list', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify ({transcript_list: transcript_list})
-        });
-        if(!response.ok) {
-            throw new Error('Failed to save transcript list');
-        }
-        let response_json = await response.json();
-        if("message" in response_json) {
-            console.log(response_json["message"]);
-        }
-        return response_json["message"];
-    }
 
     async function handleMediaUpload() {
         if(media_files) {
