@@ -1476,6 +1476,9 @@
         "role": "system"
     }];
 
+    let my_notes = [];
+    let feedback_notes = {};
+
 
     async function register() {
         if(uname == null || uname == "") {
@@ -1547,7 +1550,10 @@
         uID = "";
         documents = [];
         feedback_list = [];
-        chatbot_messages = [];
+        chatbot_messages = [{
+            "content": "You are an expert senior interior designer who is tasked to assist less experienced interior designers like students and junior interior designers with their work by answering their questions on a wide range of interior design topics. ",
+            "role": "system"
+        }];
         currentStep = 0;
     }
 
@@ -1569,6 +1575,87 @@
             let recording_json = await recording_response.json();
             recording = recording_json["recording"];
             console.log(recording);
+
+            if("video_path" in recording && recording["video_path"] != null) { 
+                const vidsrc_response = await fetch("/fetch_video", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({path: recording["video_path"]})
+                });
+                if(!vidsrc_response.ok) {
+                    throw new Error('Failed to fetch video');
+                }
+                const vidblob = await vidsrc_response.blob();
+                recording["video"] = URL.createObjectURL(vidblob);
+            }
+
+            if("audio_path" in recording && recording["audio_path"] != null) {
+                const audiosrc_response = await fetch("/fetch_audio", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({audio_path: recording["audio_path"]})
+                });
+                if(!audiosrc_response.ok) {
+                    throw new Error('Failed to fetch audio');
+                }
+                const audioblob = await audiosrc_response.blob();
+                recording["audio"] = URL.createObjectURL(audioblob);
+            }
+
+            const feedback_list_response = await fetch("/get_feedback_list", {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            });
+            if (!feedback_list_response.ok) {
+                throw new Error('Failed to fetch feedback list');
+            }
+            const feedback_list_json = await feedback_list_response.json();
+            feedback_list = feedback_list_json["feedback_list"];
+
+            
+            const display_chatbot_messages_response = await fetch("/get_display_chatbot_messages", {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            });
+            if (!display_chatbot_messages_response.ok) {
+                throw new Error('Failed to fetch chatbot messages');
+            }
+            const display_chatbot_messages_json = await display_chatbot_messages_response.json();
+            chatbot_messages = display_chatbot_messages_json["display_chatbot_messages"];
+
+            const my_notes_response = await fetch("/get_my_notes", {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            });
+            if (!my_notes_response.ok) {
+                throw new Error('Failed to fetch my notes');
+            }
+            const my_notes_json = await my_notes_response.json();
+            my_notes = my_notes_json["my_notes"];
+
+            const feedback_notes_response = await fetch("/get_feedback_notes", {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            });
+            if (!feedback_notes_response.ok) {
+                throw new Error('Failed to fetch feedback notes');
+            }
+            const feedback_notes_json = await feedback_notes_response.json();
+            feedback_notes = feedback_notes_json["feedback_notes"];
+
+            
         }
             
 
@@ -1650,7 +1737,13 @@
             {/if}
 
             <div class:gone={currentStep != 2} style="width: 100%; height: 100%;"> 
-                <FeedbackList bind:chatbot_messages={chatbot_messages} bind:documents={documents} bind:feedback_list={feedback_list} bind:recording={recording}/>
+                <FeedbackList 
+                bind:chatbot_messages={chatbot_messages} 
+                bind:documents={documents} 
+                bind:feedback_list={feedback_list} 
+                bind:recording={recording}
+                bind:my_notes={my_notes}
+                bind:feedback_notes={feedback_notes}/>
             </div>
 	</div>
 	<div class="navigation centered spaced bordered row">

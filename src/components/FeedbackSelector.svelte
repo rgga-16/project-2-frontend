@@ -2,6 +2,7 @@
     import {onMount} from 'svelte';
     import LoadingBar from './LoadingBar.svelte';
     import {seekTo, focusOnFeedback, logAction, pause} from '../utils.js';
+    import {saveFeedbackList, saveRecording} from '../savers.js';
     
     export let recording;
     export let feedback_list;
@@ -264,25 +265,7 @@
         return [json["audiopath"], json["videopath"]];
     }
 
-    async function saveRecording() {
-        console.log(recording);
-        const response = await fetch('/save_recording', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({recording:recording})
-        });
-        if(!response.ok) {
-            throw new Error('Failed to save recording');
-        }
-
-        let response_json = await response.json();
-        if("message" in response_json) {
-            console.log(response_json["message"]);
-        }
-        return response_json["message"];
-    }
+    
 
 
     async function handleMediaUpload() {
@@ -480,7 +463,7 @@
                         await embedTranscriptList(transcript_list);
 
                         // await saveTranscriptList();
-                        await saveRecording();
+                        await saveRecording(recording);
                         console.log("Transcript list embedded")
                         load_status="Done!"
                         progress=100;
@@ -609,19 +592,6 @@
         } else {
             alert("Please highlight text in the transcript with your mouse to add as feedback.");
             return "Error: No text highlighted";
-        }
-    }
-
-    function saveFeedbackList(feedback_list) {
-        const response = fetch("/save_feedback_list", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({feedback_list: feedback_list})
-        });
-        if(!response.ok) {
-            throw new Error("Failed to save feedback list");
         }
     }
 
@@ -903,7 +873,7 @@
                                             await handleMediaUpload();
                                             
                                             is_loading=false;
-                                            await saveRecording();
+                                            await saveRecording(recording);
                                             await logAction("FeedbackSelector: Upload media", recording);
                                         }} 
                                 disabled={is_loading || !media_files || media_files.length===0}> 
@@ -983,6 +953,8 @@
                                 feedback_list=feedback_list;
                                 load_status="Highlighting feedback ..."
                                 autoHighlightFeedback(feedback_list);
+                                await saveFeedbackList(feedback_list);
+                                await saveRecording(recording);
                                 await pause(500); 
                                 progress=100; 
                                 console.log("Feedback: " + feedback_list[0]);
@@ -999,6 +971,8 @@
                             disabled={!recording || !recording.transcript_list || is_loading}
                             on:click={async () => {
                                 let selection = addFeedback("positive");
+                                await saveFeedbackList(feedback_list);
+                                await saveRecording(recording);
                                 await logAction("FeedbackSelector: Add positive feedback", selection);
                             }}
                         > 
@@ -1009,6 +983,8 @@
                             disabled={!recording || !recording.transcript_list || is_loading}
                             on:click={async () => {
                                 let selection = addFeedback("critical");
+                                await saveFeedbackList(feedback_list);
+                                await saveRecording(recording);
                                 await logAction("FeedbackSelector: Add critical feedback", selection);
                             }}
                         > 
@@ -1019,6 +995,8 @@
                             disabled={!recording || !recording.transcript_list || is_loading}
                             on:click={async () => {
                                 let selection = removeFeedback();
+                                await saveFeedbackList(feedback_list);
+                                await saveRecording(recording);
                                 await logAction("FeedbackSelector: Remove feedback", selection);
                             }}
                         > 
@@ -1029,6 +1007,8 @@
                             disabled={!recording || !recording.transcript_list || is_loading}
                             on:click={async () => {
                                 removeAllFeedback();
+                                await saveFeedbackList(feedback_list);
+                                await saveRecording(recording);
                                 await logAction("FeedbackSelector: Removed all feedback", feedback_list);
                             }}
                         > 

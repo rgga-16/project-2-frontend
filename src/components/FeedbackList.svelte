@@ -2,6 +2,7 @@
     import { onMount, prevent_default } from 'svelte/internal';
 
     import {seekTo, focusOnFeedback, logAction, pause, focusOnFeedbackNote} from '../utils.js';
+    import {saveFeedbackList, saveDisplayChatbotMessages, saveMyNotes, saveMyFeedbackNotes} from '../savers.js';
     import LoadingBar from './LoadingBar.svelte';
     import Range from './Range.svelte';
 
@@ -13,8 +14,8 @@
         "role": "system"
     }];
 
-    let my_notes = [];
-    let feedback_notes = {};
+    export let my_notes = [];
+    export let feedback_notes = {};
     
     let show_chatbot_settings=false;
     let chatbot_models = {
@@ -202,6 +203,7 @@
         chatbot_messages.push(message);
         chatbot_messages = chatbot_messages; console.log(chatbot_messages);
         feedback_list = feedback_list;
+        await saveDisplayChatbotMessages(chatbot_messages);
 
         chatbot_load_status = "Thinking...";
         chatbot_load_progress=50;
@@ -235,6 +237,7 @@
         chatbot_messages.push(assistant_message);
         chatbot_messages = chatbot_messages;
         feedback_list = feedback_list;
+        await saveDisplayChatbotMessages(chatbot_messages);
 
         is_loading=false;
         chatbot_load_progress=0;
@@ -499,6 +502,7 @@
                                         </button>
                                         <button class="action-button" on:click={async () => {
                                             removeFeedback(feedback);
+                                            await saveFeedbackList(feedback_list);
                                             await logAction("FeedbackList: Remove feedback", feedback);
                                         }}>
                                             <img src="./logos/delete-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
@@ -649,6 +653,7 @@
                                                     <button class="action-button row spaced centered" on:click={async () => {
                                                         active_right_tab = 2;
                                                         addNote(message.role+": "+message.content);
+                                                        await saveMyNotes(my_notes);
                                                         await logAction("FeedbackList: Added note to My Notes", message);                                                        
                                                     }}> 
                                                         <small> Add to My Notes </small>
@@ -659,6 +664,7 @@
                                                         <button class="action-button row spaced centered" on:click={async () => {
                                                             active_right_tab = 2;
                                                             addNote(message.role+": "+message.content, "id" in message.context ? message.context.id : null);
+                                                            await saveMyFeedbackNotes(feedback_notes);
                                                             await logAction("FeedbackList: Added note to Feedback ID"+message.context.id, message);                                                        
                                                         }}> 
                                                             <small> Add to F#{message.context.id} Notes </small>
@@ -919,6 +925,7 @@
                                                 <!-- <button> Edit </button> -->
                                                 <button class="action-button" on:click={async () => {
                                                     removeNote(i);
+                                                    await saveMyNotes(my_notes);
                                                     await logAction("FeedbackList: Removed note", note);
                                                 }}> 
                                                     <img src="./logos/delete-x-svgrepo-com.svg" alt="Delete note" class="mini-icon">
@@ -938,6 +945,7 @@
                                             <button class="action-button" on:click={async () => {
                                                 confirmNote(); 
                                                 adding_note=false;
+                                                await saveMyNotes(my_notes);
                                                 await logAction("FeedbackList: Added note to My Notes", temp_note);
                                             }}> Confirm </button>
                                             <button class="action-button" on:click={async () => {
@@ -968,6 +976,7 @@
                                         }
                                         my_notes=[];
                                         my_notes=my_notes;
+                                        await saveMyNotes(my_notes);
                                         await logAction("FeedbackList: Removed all notes from My Notes", my_notes);
                                 }}> 
                                     <img src="./logos/delete-svgrepo-com.svg" alt="Delete all notes" class="action-icon">
@@ -996,6 +1005,7 @@
                                             }
                                             delete feedback_notes[key];
                                             feedback_notes = feedback_notes;
+                                            await saveMyFeedbackNotes(feedback_notes);
                                             await logAction("FeedbackList: Removed feedback notes section", "Feedback ID"+key);
                                         }}> 
                                             <img src="./logos/delete-x-svgrepo-com.svg" alt="Remove feedback notes section" class="mini-icon">
@@ -1011,6 +1021,7 @@
                                                         <!-- <button class="action-button"> Edit </button> -->
                                                         <button class="action-button" on:click={async () => {
                                                             removeNote(i, key);
+                                                            await saveMyFeedbackNotes(feedback_notes);
                                                             await logAction("FeedbackList: Removed note from Feedback ID"+key, note);
                                                         }}> 
                                                             <img src="./logos/delete-x-svgrepo-com.svg" alt="Delete note from Feedback ID{key}" class="mini-icon">
@@ -1030,6 +1041,7 @@
                                                     <button class="action=button" on:click={async () => {
                                                         confirmNote(key);
                                                         feedback_notes[key].is_adding=false;
+                                                        await saveMyFeedbackNotes(feedback_notes);
                                                         await logAction("FeedbackList: Added note to Feedback ID"+key, temp_note);
                                                     }}> Confirm </button>
                                                     <button class="action=button" on:click={async () => {
@@ -1059,6 +1071,7 @@
                                                 }
                                                 feedback_notes[key].notes=[];
                                                 feedback_notes[key].notes=feedback_notes[key].notes;
+                                                await saveMyFeedbackNotes(feedback_notes);
                                                 await logAction("FeedbackList: Removed all notes from Feedback ID"+key, feedback_notes[key].notes);
                                             }}> 
                                             <img src="./logos/delete-svgrepo-com.svg" alt="Delete all notes" class="action-icon">
