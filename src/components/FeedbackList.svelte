@@ -1,7 +1,7 @@
 <script>
     import { onMount, prevent_default } from 'svelte/internal';
 
-    import {seekTo, focusOnFeedback, logAction, pause, focusOnFeedbackNote} from '../utils.js';
+    import {seekTo, focusOnFeedback, logAction, pause, focusOnFeedbackNote, copy} from '../utils.js';
     import {saveFeedbackList, saveDisplayChatbotMessages, saveMyNotes, saveMyFeedbackNotes} from '../savers.js';
     import LoadingBar from './LoadingBar.svelte';
     import Range from './Range.svelte';
@@ -483,10 +483,11 @@
                                         </button>
 
                                         <button class="action-button centered column" on:click={async () => {
+                                            active_right_tab=1;
                                             addContext(feedback);
-                                            await logAction("FeedbackList: Add as context", context);
+                                            await logAction("FeedbackList: Select as context", context);
                                         }}>
-                                            <img src="./logos/add-ellipse-svgrepo-com.svg" alt="Add feedback as context" class="action-icon">
+                                            <img src="./logos/select-context.svg" alt="Select feedback as context" style="height: 3.3rem; width: 3.3rem;">
                                             Select Context
                                         </button>
                                         <button class="action-button" on:click={async () => {
@@ -501,9 +502,14 @@
                                             Add Note
                                         </button>
                                         <button class="action-button" on:click={async () => {
+                                            let confirm = window.confirm("Are you sure you want to delete this feedback? This cannot be undone.");
+                                            if(!confirm) {
+                                                return;
+                                            }
+                                            
                                             removeFeedback(feedback);
                                             await saveFeedbackList(feedback_list);
-                                            await logAction("FeedbackList: Remove feedback", feedback);
+                                            await logAction("FeedbackList: Remove critical feedback", feedback);
                                         }}>
                                             <img src="./logos/delete-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
                                             Delete
@@ -522,32 +528,64 @@
                         {#each feedback_list as feedback, i}
                             {#if feedback.type==="positive"}
                                 <div class="positive-feedback-note" class:selected={feedback===selected_feedback} 
-                                on:click={
-                                async (event) => {
-                                    selectFeedback(feedback, event);
-                                    focusOnFeedback(feedback);
-                                    await logAction("FeedbackList: Selected feedback", feedback);
+                                    on:click={ async (event) => {
+                                        selectFeedback(feedback, event);
+                                        focusOnFeedback(feedback);
+                                        await logAction("FeedbackList: Selected feedback", feedback);
                                 }}>
-                                    <span class="timestamp" on:click={
-                                        async () => {
-                                            active_right_tab = 0;
-                                            if("excerpt_reference" in feedback) {
-                                                if("start_timestamp" in feedback.excerpt_reference) {
-                                                    seekTo(feedback.excerpt_reference.start_timestamp, mediaPlayer);
-                                                    await logAction("FeedbackList: Seeked to timestamp", feedback.excerpt_reference.start_timestamp);
+                                    <div class="note-header row space-between">
+                                        <small class="timestamp" on:click={
+                                            async () => {
+                                                active_right_tab = 0;
+                                                if("excerpt_reference" in feedback) {
+                                                    if("start_timestamp" in feedback.excerpt_reference) {
+                                                        seekTo(feedback.excerpt_reference.start_timestamp, mediaPlayer);
+                                                        await logAction("FeedbackList: Seeked to timestamp", feedback.excerpt_reference.start_timestamp);
+                                                    }
                                                 }
-                                            }
-                                        }}>
-                                        {#if "excerpt_reference" in feedback} 
-                                            {#if "start_timestamp" in feedback.excerpt_reference}
-                                                [{feedback.excerpt_reference.start_timestamp}]
+                                            }}>
+                                            {#if "excerpt_reference" in feedback} 
+                                                {#if "start_timestamp" in feedback.excerpt_reference}
+                                                    [{feedback.excerpt_reference.start_timestamp}]
+                                                {:else}
+                                                    [00:00:00]
+                                                {/if}
                                             {:else}
-                                                [00:00:00]
+                                                [00:00:00]  
                                             {/if}
-                                        {:else}
-                                            [00:00:00]  
-                                        {/if}
-                                    </span> 
+                                        </small>
+
+                                        <div class="row spaced">
+                                            <button class="action-button" on:click = {async () => {
+                                                active_right_tab = 1;
+                                                addContext(feedback);
+                                                await logAction("FeedbackList: Select as context", context);
+                                            }}>
+                                                <img src="./logos/select-context.svg" alt="Select feedback as context" style="height: 2.3rem; width: 2.3rem;">
+                                            </button>
+
+                                            <button class="action-button" on:click = {async () => {
+                                                active_right_tab = 2;
+                                                if(feedback.id in feedback_notes) {
+                                                    feedback_notes[feedback.id].is_adding = true;
+                                                } else {
+                                                    feedback_notes[feedback.id] = {notes:[], is_adding:true};
+                                                }
+                                            }}>
+                                                <img src="./logos/note-svgrepo-com.svg" alt="Add note" class="mini-icon" >
+                                            </button>
+
+                                            <button class="action-button" on:click = {async () => {
+                                                removeFeedback(feedback);
+                                                await saveFeedbackList(feedback_list);
+                                                await logAction("FeedbackList: Remove positive feedback", feedback);
+                                            }}>
+                                                <img src="./logos/delete-svgrepo-com.svg" alt="Paraphrase positively" style="height: 2rem; width: 2rem;">
+                                            </button>
+
+                                        </div>
+                                    </div>
+                                    
                                     <br>
                                     <p>"{feedback.quote}"</p>
                                     <br>
@@ -673,7 +711,8 @@
                                                     {/if}
                                         
                                                     <button class="action-button column centered" on:click = {async () => {
-                                                        navigator.clipboard.writeText(message.role+": "+message.content);
+                                                        // navigator.clipboard.writeText(message.role+": "+message.content);
+                                                        copy(message.role+": "+message.content);
                                                         await logAction("FeedbackList: Copied message", message);
                                                     }}> 
                                                         <img src="./logos/copy-svgrepo-com.svg" alt="Copy note" class="mini-icon">
@@ -733,7 +772,7 @@
                                         <div class="suggested-message" on:click|preventDefault={
                                                 async () => {
                                                     if(!is_loading) {
-                                                        await sendMessage("Can you suggest a task to address the following feedback?",context);
+                                                        await sendMessage("Can you brainstorm a set of actions to address the following feedback?",context);
                                                     }
                                                 }
                                             }>
@@ -790,6 +829,7 @@
                                     
                                     <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, context)}"  placeholder="Type your message here..." id="textarea"></textarea>
                                     <button class="action-button centered column" disabled={is_loading} on:click|preventDefault={async () => { 
+                                            
                                             await sendMessage(inputMessage,  context);
                                             
                                             inputMessage = "";
@@ -1282,11 +1322,11 @@
 		background-color: lightgray;
 	}
 
-    span.timestamp {
+    .timestamp {
         color: blue;
     }
 
-    span.timestamp:hover{
+    .timestamp:hover{
         /* font-weight: bold; */
         color: blue;
         text-decoration: underline;
@@ -1328,7 +1368,7 @@
 
     .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         gap: 20px;
         padding: 20px;
     }
