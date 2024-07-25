@@ -1,5 +1,6 @@
 
 import {get} from 'svelte/store';
+import { copyToClipboard } from '@svelte-put/copy'; //https://svelte-put.vnphanquang.com/docs/copy#installation
 
 export async function pause(milliseconds) {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -90,4 +91,8 @@ export function focusOnFeedbackNote(feedback) {
     } else {
         console.log("Error: Can't focus on feedback note. Corresponding note section not found.")
     }
+}
+
+export function copy(text) {
+    copyToClipboard(text);
 }
