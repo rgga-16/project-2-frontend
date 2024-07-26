@@ -4,8 +4,8 @@
     import {seekTo, focusOnFeedback, logAction, pause} from '../utils.js';
     import {saveFeedbackList, saveRecording} from '../savers.js';
     
-    export let recording;
-    export let feedback_list;
+    export let recording = {};
+    export let feedback_list = [];
 
     let tooltip; 
 
@@ -265,6 +265,23 @@
         return [json["audiopath"], json["videopath"]];
     }
 
+    async function deleteRecording() {
+        let response = await fetch("/delete_recording", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({recording: recording})
+        });
+        recording = {};
+
+        let response_json = await response.json();
+        if("message" in response_json) {
+            console.log(response_json["message"]);
+        }
+        return response_json["message"];
+    }
+
     
 
 
@@ -273,15 +290,16 @@
             for (const file of media_files) {
                 console.log(file.type);
                 if(file.type.includes('video')) {
-                    if(recording || "video" in recording || "audio" in recording || "transcript_list" in recording || feedback_list.length > 0) {
+                    if(recording || "video" in recording || "audio" in recording || "transcript_list" in recording) {
                         if(recording.video || recording.audio || recording.transcript_list) {
-                            let confirm = window.confirm("Uploading a new video will overwrite this recording and clear highlighted feedback. Do you want to proceed?");
+                            let confirm = window.confirm("Uploading a new video will overwrite this recording. Do you want to proceed?");
                             if(!confirm) {
                                 return;
                             }
+                            await deleteRecording();
                         }
                     }
-                    feedback_list=[];
+                    // feedback_list=[];
 
                     let videoSrc = URL.createObjectURL(file);
                     load_status="Uploading video...";
@@ -332,15 +350,16 @@
                     videoPath=null;
                     // await incrementRecordNumber();
                 } else if(file.type.includes('audio')) {
-                    if(recording || "audio" in recording || "video" in recording || "transcript_list" in recording || feedback_list.length > 0) {
+                    if(recording || "audio" in recording || "video" in recording || "transcript_list" in recording) {
                         if(recording.audio || recording.video || recording.transcript_list) {
-                            let confirm = window.confirm("Uploading a new audio will overwrite this recording and clear highlighted feedback. Do you want to proceed?");
+                            let confirm = window.confirm("Uploading a new audio will overwrite this recording. Do you want to proceed?");
                             if(!confirm) {
                                 return;
                             }
+                            await deleteRecording();
                         }
                     }
-                    feedback_list=[];
+                    // feedback_list=[];
                     let audioSrc = URL.createObjectURL(file);
                     // Save the audio file and get its path
                     load_status="Uploading audio...";
@@ -414,15 +433,16 @@
                 console.log(file.type);
                 if(file.name.endsWith('.srt')) {
 
-                    if(recording || "transcript" in recording || "transcript_list" in recording || feedback_list.length > 0) {
+                    if(recording || "transcript" in recording || "transcript_list" in recording) {
                         if(recording.transcript || recording.transcript_list) {
-                            let confirm = window.confirm("Uploading a new transcript will overwrite the current transcript and clear highlighted feedback. Do you want to proceed?");
+                            let confirm = window.confirm("Uploading a new transcript will overwrite the current transcript. Do you want to proceed?");
                             if(!confirm) {
                                 return;
                             }
+                            await deleteRecording();
                         }
                     }
-                    feedback_list=[];
+                    // feedback_list=[];
 
                     let reader = new FileReader();
 
@@ -794,7 +814,7 @@
                         <span >Screen record your discussion</span>
                         <div class="row spaced">
                             <button class="action-button" on:click={async () => {
-                                if("video" in recording || "audio" in recording || "transcript_list" in recording || feedback_list.length > 0) {
+                                if("video" in recording || "audio" in recording || "transcript_list" in recording) {
                                     if(recording.video || recording.audio || recording.transcript_list ) {
                                         let confirm = window.confirm("Starting a new recording will clear all highlighted feedback and overwrite the existing recording. Do you want to proceed?");
                                         if(!confirm) {
@@ -802,7 +822,7 @@
                                         }
                                     }
                                 }
-                                feedback_list=[]; 
+                                // feedback_list=[]; 
                                 startRecording();
                                 await logAction("FeedbackSelector: Start recording", null);
                             }} disabled={is_recording || is_paused} >

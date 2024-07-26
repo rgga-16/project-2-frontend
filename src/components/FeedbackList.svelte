@@ -1,7 +1,7 @@
 <script>
     import { onMount, prevent_default } from 'svelte/internal';
 
-    import {seekTo, focusOnFeedback, logAction, pause, focusOnFeedbackNote, copy} from '../utils.js';
+    import {seekTo, focusOnFeedback, logAction, pause, focusOnFeedbackNote, copy, convertImageToBase64,saveBase64Image} from '../utils.js';
     import {saveFeedbackList, saveDisplayChatbotMessages, saveMyNotes, saveMyFeedbackNotes} from '../savers.js';
     import LoadingBar from './LoadingBar.svelte';
     import Range from './Range.svelte';
@@ -62,19 +62,13 @@
     let document_load_progress=0;
     let is_document_loading=false;
 
-    async function convertImageToBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result); // This is the base64 string
-            reader.onerror = error => reject(error);
-            reader.readAsDataURL(file);
-        });
-    }
+    
 
     async function handleImageUpload(image_files) {
         let image_file = image_files[0];
         if(image_file) {
             if(image_file.type.includes('image')) {
+                console.log(image_file);
                 let image_url = URL.createObjectURL(image_file);
                 // alert("Image uploaded successfully.");
                 return [image_url, image_file];
@@ -197,7 +191,9 @@
             chatbot_load_status = "Uploading image...";
             chatbot_load_progress=30; 
             let image_base64 = await convertImageToBase64(selected_image);
+
             body["image_data"] = image_base64;
+            message["image_path"] = await saveBase64Image(image_base64);
         }
 
         chatbot_messages.push(message);
@@ -709,14 +705,57 @@
                                                             <img src="./logos/note-svgrepo-com.svg" alt="Add feedback note" class="mini-icon">
                                                         </button>
                                                     {/if}
+
+                                                    <div class="row">
+                                                        <button class="action-button column centered" on:click = {async () => {
+                                                            // navigator.clipboard.writeText(message.role+": "+message.content);
+                                                            copy(message.role+": "+message.content);
+                                                            await logAction("FeedbackList: Copied message", message);
+                                                        }}> 
+                                                            <img src="./logos/copy-svgrepo-com.svg" alt="Copy note" class="mini-icon">
+                                                        </button>
+
+                                                        {#if message.role==="user"} 
+                                                            <button disabled={is_loading} class="action-button column centered" on:click = {async () => {
+                                                                let confirm = window.confirm("Are you sure you want to delete this message? This cannot be undone.");
+                                                                if(!confirm) {
+                                                                    return;
+                                                                }
+                                                                
+
+                                                                // Get index of assistant message in chatbot_messages. Delete assistant message too. 
+                                                                //BUG: NOt being deleted
+                                                                let idx = chatbot_messages.indexOf(message);
+                                                                let assistant_idx = idx+1;
+                                                                let assistant_message = chatbot_messages[assistant_idx];
+                                                                
+
+                                                                await fetch("/remove_from_backend_chatbot_messages", {
+                                                                    method: "POST",
+                                                                    headers: {
+                                                                        "Content-Type": "application/json"
+                                                                    },
+                                                                    body: JSON.stringify({user_message_idx: idx, assistant_message_idx: assistant_idx})
+                                                                });
+
+                                                                chatbot_messages = chatbot_messages.filter(m => m !== message);
+                                                                if(assistant_message.role==="assistant") {
+                                                                    chatbot_messages = chatbot_messages.filter(m => m !== assistant_message);
+                                                                }
+
+
+                                                                chatbot_messages = chatbot_messages;
+                                                                await saveDisplayChatbotMessages(chatbot_messages);
+                                                                await logAction("FeedbackList: Removed message", message);
+                                                            }}> 
+                                                                <img src="./logos/delete-x-svgrepo-com.svg" alt="Delete message" class="mini-icon">
+                                                            </button>
+                                                        {/if}
+
+                                                        
+                                                    </div>
                                         
-                                                    <button class="action-button column centered" on:click = {async () => {
-                                                        // navigator.clipboard.writeText(message.role+": "+message.content);
-                                                        copy(message.role+": "+message.content);
-                                                        await logAction("FeedbackList: Copied message", message);
-                                                    }}> 
-                                                        <img src="./logos/copy-svgrepo-com.svg" alt="Copy note" class="mini-icon">
-                                                    </button>
+                                                    
                                                 </div>
                                             </div>
                                             <div class="row">

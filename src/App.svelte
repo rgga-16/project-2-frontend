@@ -1631,6 +1631,25 @@
             const display_chatbot_messages_json = await display_chatbot_messages_response.json();
             chatbot_messages = display_chatbot_messages_json["display_chatbot_messages"];
 
+            for (let message of chatbot_messages) {
+                if("image_path" in message && message["image_path"] != null) {
+                    const imgsrc_response = await fetch("/fetch_image", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({image_path: message["image_path"]})
+                    });
+                    if(!imgsrc_response.ok) {
+                        throw new Error('Failed to fetch image');
+                    }
+                    const imgblob = await imgsrc_response.blob();
+                    message["image"] = URL.createObjectURL(imgblob);
+                }
+            }
+
+
+
             const my_notes_response = await fetch("/get_my_notes", {
                 method: 'GET',
                 headers: {

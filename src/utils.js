@@ -6,8 +6,28 @@ export async function pause(milliseconds) {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
-export async function saveConversationHistory(conversation_history) {
+export async function saveBase64Image(image_base64) {
+    const response = await fetch("/save_image", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({image_data: image_base64})
+    });
+    if(!response.ok) {
+        throw new Error("Failed to save image");
+    }
+    const json = await response.json();
+    return json["image_path"];
+}
 
+export async function convertImageToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result); // This is the base64 string
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+    });
 }
 
 export function setCookie(name,value,daysToExpire) {
