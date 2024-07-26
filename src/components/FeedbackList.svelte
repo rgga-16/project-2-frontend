@@ -1019,19 +1019,24 @@
                                 {/if}
                                 {#if adding_note} 
                                     <div class="row padded bordered space-between" style="width:100%; height:auto;"> 
-                                        <input type="text" bind:value={temp_note} placeholder="Enter your note here" />
+                                        <input class="note-input" type="text" bind:value={temp_note} placeholder="Enter your note here"/>
                                         <div class="row spaced">
                                             <button class="action-button" on:click={async () => {
                                                 confirmNote(); 
                                                 adding_note=false;
                                                 await saveMyNotes(my_notes);
                                                 await logAction("FeedbackList: Added note to My Notes", temp_note);
-                                            }}> Confirm </button>
+                                            }}> 
+                                                <img src="./logos/check-svgrepo-com.svg" alt="Confirm adding note" class="mini-icon">
+
+                                            </button>
                                             <button class="action-button" on:click={async () => {
                                                 adding_note=false;
                                                 temp_note="";
                                                 await logAction("FeedbackList: Cancelled adding note to My Notes", temp_note);
-                                            }}> Cancel </button>
+                                            }}> 
+                                                <img src="./logos/delete-x-svgrepo-com.svg" alt="Cancel adding note" class="mini-icon">
+                                            </button>
                                         </div>
                                     </div>
                                 {/if}
@@ -1115,19 +1120,23 @@
                                         {/if}   
                                         {#if feedback_notes[key].is_adding} 
                                             <div class="row padded bordered space-between" style="width:100%; height:auto;"> 
-                                                <input type="text" bind:value={temp_note} placeholder="Enter your note here" />
+                                                <input class="note-input" type="text" bind:value={temp_note} placeholder="Enter your note here" />
                                                 <div class="row spaced">
-                                                    <button class="action=button" on:click={async () => {
+                                                    <button class="action-button" on:click={async () => {
                                                         confirmNote(key);
                                                         feedback_notes[key].is_adding=false;
                                                         await saveMyFeedbackNotes(feedback_notes);
                                                         await logAction("FeedbackList: Added note to Feedback ID"+key, temp_note);
-                                                    }}> Confirm </button>
-                                                    <button class="action=button" on:click={async () => {
+                                                    }}> 
+                                                        <img src="./logos/check-svgrepo-com.svg" alt="Confirm adding note" class="mini-icon">
+                                                    </button>
+                                                    <button class="action-button" on:click={async () => {
                                                         feedback_notes[key].is_adding=false;
                                                         await logAction("FeedbackList: Cancelled adding note to Feedback ID"+key, temp_note);
                                                         temp_note="";
-                                                    }}> Cancel </button>
+                                                    }}> 
+                                                        <img src="./logos/delete-x-svgrepo-com.svg" alt="Cancel adding note" class="mini-icon">
+                                                    </button>
                                                 </div>
                                             </div>
                                         {/if}
@@ -1473,6 +1482,10 @@
     }
     .no-context {
         justify-content: flex-end; /* Button on the right */
+    }
+
+    .note-input {
+        width: 80%;
     }
     
     
