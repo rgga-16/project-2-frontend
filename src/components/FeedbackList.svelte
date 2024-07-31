@@ -21,11 +21,11 @@
     let chatbot_models = {
         "GPT-4o":"gpt-4o",
         "GPT-4o Mini": "gpt-4o-mini",
-        // "Interior Designer GPT":"ft:gpt-3.5-turbo-0125:im-lab:int-des-full:9b2qf12W"
         "The Interior Design Reference & Specification GPT": "ft:gpt-4o-mini-2024-07-18:im-lab:the-interior-des:9p9NTD1W",
-        "Planning and Designers Handbook GPT": "ft:gpt-4o-mini-2024-07-18:im-lab:planning-and-des:9p9vtdRF"
+        "Planning and Designers Handbook GPT": "ft:gpt-4o-mini-2024-07-18:im-lab:planning-and-des:9p9vtdRF",
+        "Interior Design Illustrated GPT": "ft:gpt-4o-mini-2024-07-18:im-lab:int-illustrated:9qXQyPfI"
     }
-    let selected_chatbot="GPT-4o Mini";
+    let selected_chatbot="GPT-4o";
     let chatbot_temperature = 0.0;
     let chatbot_max_output_tokens = 256; 
 
