@@ -806,8 +806,8 @@
                 
             {/if}
         </div>
-        <div id="transcript-buttons-area" class="row centered spaced">
-            <div id="capture-feedback-panel" class="column bordered padded centered spaced">
+        <div id="transcript-buttons-area" class="row centered spaced bordered">
+            <div id="capture-feedback-panel" class="column padded centered spaced">
                 <span style="font-weight: bold; text-decoration: underline; margin-left: 1rem;"> Step 1: Upload your discussion.</span>
                 <div class="row centered spaced">
                     <!-- <div class="column centered">
@@ -931,7 +931,7 @@
                     </div>
                 </div>
             </div>
-            <div id="feedback-highlight-panel" class ="column bordered spaced padded ">
+            <div id="feedback-highlight-panel" class ="column spaced padded ">
                 <span style="font-weight: bold; text-decoration: underline; margin-left: 1rem;"> Step 2: Highlight feedback in the discussion's transcript.</span>
                 <div class="centered" style="height: 100%; width: 100%;">
                     <div class="row centered spaced">
@@ -1096,8 +1096,11 @@
 <style>
     #feedback-selector-page{
         position: relative;
+        padding-top: 1rem;
+        display:flex;
         height:100%;
         width:100%;
+        background-color: #F8F9FA;
     }
 
     #left-panel {
@@ -1170,13 +1173,18 @@
     }
 
     mark.positive {
-        background-color:lightgreen;
-        color: black;
+        /* background-color:lightgreen;
+        color: black; */
+        background-color: #28A745;
+        color: #FFFFFF;
+        
     }
 
     mark.critical{
-        background-color:lightcoral;
-        color: black;
+        /* background-color:lightcoral;
+        color: black; */
+        background-color: #DC3545;
+        color: #FFFFFF;
     }
 
     mark:hover {
@@ -1184,12 +1192,11 @@
     }
 
     span.timestamp {
-        color: blue;
+        color: #007BFF;
     }
 
     span.timestamp:hover{
         /* font-weight: bold; */
-        color: blue;
         text-decoration: underline;
         cursor: pointer;
     }

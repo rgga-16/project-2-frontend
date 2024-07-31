@@ -6,6 +6,7 @@ html, body {
 
 body {
 	color: #333;
+	/* background-color: #F8F9FA; */
 	position: absolute;
 	margin: 0;
 	padding: 8px;
@@ -135,7 +136,9 @@ main{
 	width: auto; 
 	border: 0 none;
 	z-index: 2;
+	cursor: pointer;
 }
+
 
 .action-icon {
 	height: 3rem;
@@ -179,4 +182,21 @@ main{
 
 .link:hover + .tooltip {
 	visibility: visible;
+}
+
+
+#transcript-area, #transcript-buttons-area, #capture-feedback-panel, #feedback-highlight-panel, #feedback-details-area {
+	background-color: #FFFFFF;
+	margin-bottom: 1rem;
+	padding: 1rem;
+}
+
+#left-panel, #right-panel {
+	background-color: #F8F9FA;
+}
+
+#traverse-feedback-area {
+	background-color: #E9ECEF;
+	padding: 0.5rem;
+	border-radius: 0.25rem;
 }

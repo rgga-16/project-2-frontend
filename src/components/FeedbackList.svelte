@@ -21,7 +21,9 @@
     let chatbot_models = {
         "GPT-4o":"gpt-4o",
         "GPT-4o Mini": "gpt-4o-mini",
-        "Interior Designer GPT":"ft:gpt-3.5-turbo-0125:im-lab:int-des-full:9b2qf12W"
+        // "Interior Designer GPT":"ft:gpt-3.5-turbo-0125:im-lab:int-des-full:9b2qf12W"
+        "The Interior Design Reference & Specification GPT": "ft:gpt-4o-mini-2024-07-18:im-lab:the-interior-des:9p9NTD1W",
+        "Planning and Designers Handbook GPT": "ft:gpt-4o-mini-2024-07-18:im-lab:planning-and-des:9p9vtdRF"
     }
     let selected_chatbot="GPT-4o Mini";
     let chatbot_temperature = 0.0;
@@ -194,6 +196,7 @@
 
             body["image_data"] = image_base64;
             message["image_path"] = await saveBase64Image(image_base64);
+            body["image_path"] = message["image_path"];
         }
 
         chatbot_messages.push(message);
@@ -909,7 +912,7 @@
 
                                         {#if documents.length > 0}
                                             {#each documents as doc,i}
-                                                <div class="row centered spaced bordered centered">
+                                                <div class="row centered spaced centered">
                                                     {doc}
                                                     <button disabled={is_document_loading} class="action-button" on:click|preventDefault={
                                                         async () => {
@@ -1199,10 +1202,10 @@
         display:flex;
         height:100%;
         width:100%;
+        background-color: #F8F9FA;
     }
 
     #left-panel{
-        
         position:relative;
         height:100%;
         width:60%;
@@ -1242,6 +1245,7 @@
     }
 
     .tab-content {
+        background-color: #FFFFFF;
         height:95%;
         width:100%;
     }
@@ -1371,12 +1375,11 @@
 	}
 
     .timestamp {
-        color: blue;
+        color: #007BFF;
     }
 
     .timestamp:hover{
         /* font-weight: bold; */
-        color: blue;
         text-decoration: underline;
         cursor: pointer;
     }
@@ -1488,7 +1491,14 @@
         width: 80%;
     }
     
-    
+    #chatbot-configurations {
+        background-color: #F8F9FA;
+    }
+
+    #chatbot-rag-panel {
+        background-color: #F8F9FA;
+    }
+
 
     
 

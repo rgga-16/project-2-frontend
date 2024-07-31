@@ -1750,12 +1750,12 @@
             </div>
 
             {#if currentStep ===1}
-                <div class:gone={currentStep != 1} style="width: 100%; height: 100%;">
+                <div class:gone={currentStep != 1} style="width: 100%; height: 100%; background-color: #F8F9FA;">
                     <FeedbackSelector bind:recording={recording} bind:feedback_list={feedback_list}/>
                 </div>
             {/if}
 
-            <div class:gone={currentStep != 2} style="width: 100%; height: 100%;"> 
+            <div class:gone={currentStep != 2} style="width: 100%; height: 100%; background-color: #F8F9FA;"> 
                 <FeedbackList 
                 bind:chatbot_messages={chatbot_messages} 
                 bind:documents={documents} 
