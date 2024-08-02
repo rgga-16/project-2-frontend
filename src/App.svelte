@@ -1,14 +1,18 @@
 <script>
 	import { onMount } from 'svelte';
-    import {setCookie, getCookie} from './utils.js';
+    import {setCookie, getCookie, pause} from './utils.js';
 
 	import FeedbackSelector from './components/FeedbackSelector.svelte';
 	import FeedbackList from './components/FeedbackList.svelte';
+    import LoadingBar from './components/LoadingBar.svelte';
 
 	let currentStep = 0;
 	let steps=3;
     let uname = "";
     let uID="";
+    let is_loading = false;
+    let progress = 0;
+    let load_status = "Initializing...";
 
 	let recording={};
 	// let recording={
@@ -1503,12 +1507,19 @@
             setCookie("username", uname, 30);
             setCookie("user_id", uID, 30);
 
+            progress=50;
+            load_status = "Loading documents...";
             documents = await fetch("/get_documents", {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
                 },
             }).then(r => r.json()).then(r => r.documents);
+
+            progress=100;
+            load_status = "Done!";
+            pause(1500);
+
             currentStep=1;
         }
     }
@@ -1558,6 +1569,9 @@
     }
 
     async function loadFiles(user_id) {
+
+        progress = 15;
+        load_status = "Loading documents...";
         documents = await fetch("/get_documents", {
             method: 'GET',
             headers: {
@@ -1566,6 +1580,8 @@
         }).then(r => r.json()).then(r => r.documents);
 
         if (Object.keys(recording).length <= 0) {
+            progress = 30;
+            load_status = "Loading recording...";
             let recording_response = await fetch("/get_recording", {
                 method: 'GET',
                 headers: {
@@ -1574,9 +1590,10 @@
             })
             let recording_json = await recording_response.json();
             recording = recording_json["recording"];
-            console.log(recording);
 
             if("video_path" in recording && recording["video_path"] != null) { 
+                progress = 45;
+                load_status = "Loading video...";
                 const vidsrc_response = await fetch("/fetch_video", {
                     method: 'POST',
                     headers: {
@@ -1592,6 +1609,8 @@
             }
 
             if("audio_path" in recording && recording["audio_path"] != null) {
+                progress=50;
+                load_status = "Loading audio...";
                 const audiosrc_response = await fetch("/fetch_audio", {
                     method: 'POST',
                     headers: {
@@ -1606,6 +1625,8 @@
                 recording["audio"] = URL.createObjectURL(audioblob);
             }
 
+            progress = 60;
+            load_status = "Loading feedback...";
             const feedback_list_response = await fetch("/get_feedback_list", {
                 method: 'GET',
                 headers: {
@@ -1618,7 +1639,8 @@
             const feedback_list_json = await feedback_list_response.json();
             feedback_list = feedback_list_json["feedback_list"];
 
-            
+            progress=70;
+            load_status = "Loading chatbot messages...";
             const display_chatbot_messages_response = await fetch("/get_display_chatbot_messages", {
                 method: 'GET',
                 headers: {
@@ -1648,8 +1670,8 @@
                 }
             }
 
-
-
+            progress = 80;
+            load_status = "Loading notes...";
             const my_notes_response = await fetch("/get_my_notes", {
                 method: 'GET',
                 headers: {
@@ -1674,17 +1696,14 @@
             const feedback_notes_json = await feedback_notes_response.json();
             feedback_notes = feedback_notes_json["feedback_notes"];
 
+            progress = 100;
+            load_status = "Done!";
+            pause(1500);
+
             
         }
             
 
-        // feedback_list = await fetch("get/feedback", {
-        //     method: 'POST',
-        //     headers: {
-        //         'Content-Type': 'application/json'
-        //     },
-        //     body: JSON.stringify({user_id: user_id})
-        // }).then(r => r.json()).then(r => r.feedback_list);
     }
 
     onMount(async () => {
@@ -1728,42 +1747,59 @@
         </button>
     </div>
 	<div class="carousel-container">
-            <div class="centered spaced" class:gone={currentStep != 0} style="width: 100%; height: 100%;">
-                <div class="column centered spaced" style="width: 75%; height: 75%;">
-                    <label for="username"> Enter your username </label>
-                    <input type="text" name="username" id="username" bind:value={uname}>
-                    <div class="row">
-                        <button on:click={async() => {
-                            await register();
-                        }}> 
-                            Register 
-                        </button>
+            
 
-                        <button on:click={async() => {
-                            await login();
-                        }}> 
-                            Login 
-                        </button>
+            {#if currentStep === 0}
+                <div class="centered spaced" class:gone={currentStep != 0} style="width: 100%; height: 100%;">
+
+                    <div class="overlay centered padded" class:invisible={is_loading===false}> 
+                        <LoadingBar bind:progress={progress} bind:status={load_status} />
                     </div>
 
-                </div>
-            </div>
 
-            {#if currentStep ===1}
+                    <div class="column centered spaced" style="width: 75%; height: 75%;">
+                        <label for="username"> Enter your username </label>
+                        <input type="text" name="username" id="username" bind:value={uname}>
+                        <div class="row">
+                            <button on:click={async() => {
+                                is_loading = true;
+                                await register();
+                                is_loading = false;
+                                progress=0;
+                            }}> 
+                                Register 
+                            </button>
+
+                            <button on:click={async() => {
+                                is_loading = true;
+                                await login();
+                                is_loading = false;
+                                progress=0;
+                            }}> 
+                                Login 
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
+            {:else if currentStep ===1}
                 <div class:gone={currentStep != 1} style="width: 100%; height: 100%; background-color: #F8F9FA;">
                     <FeedbackSelector bind:recording={recording} bind:feedback_list={feedback_list}/>
                 </div>
+            {:else if currentStep ===2}
+                <div class:gone={currentStep != 2} style="width: 100%; height: 100%; background-color: #F8F9FA;"> 
+                    <FeedbackList 
+                    bind:chatbot_messages={chatbot_messages} 
+                    bind:documents={documents} 
+                    bind:feedback_list={feedback_list} 
+                    bind:recording={recording}
+                    bind:my_notes={my_notes}
+                    bind:feedback_notes={feedback_notes}/>
+                </div>
             {/if}
 
-            <div class:gone={currentStep != 2} style="width: 100%; height: 100%; background-color: #F8F9FA;"> 
-                <FeedbackList 
-                bind:chatbot_messages={chatbot_messages} 
-                bind:documents={documents} 
-                bind:feedback_list={feedback_list} 
-                bind:recording={recording}
-                bind:my_notes={my_notes}
-                bind:feedback_notes={feedback_notes}/>
-            </div>
+            
 	</div>
 	<div class="navigation centered spaced bordered row">
 			<button class:invisible={currentStep !=2 || currentStep==0 } class="action-button row centered" on:click={() => {currentStep=1}} disabled={currentStep === 0}>
