@@ -1502,7 +1502,6 @@
         if(!username_response.ok) {
             alert(data.message);
         } else if (username_response.ok) {
-            alert(data.message);
             uID = data.user_id;
             setCookie("username", uname, 30);
             setCookie("user_id", uID, 30);
@@ -1542,7 +1541,6 @@
         if(!username_response.ok) {
             alert(data.message);
         } else if (username_response.ok) {
-            alert(data.message);
             uID = data.user_id;
             setCookie("username", uname, 30);
             setCookie("user_id", uID, 30);

@@ -282,7 +282,21 @@
         return response_json["message"];
     }
 
-    
+    async function deleteRecordingMedia() {
+        let response = await fetch("/delete_recording_media", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({recording: recording})
+        });
+
+        let response_json = await response.json();
+        if("message" in response_json) {
+            console.log(response_json["message"]);
+        }
+        return response_json["message"];
+    }
 
 
     async function handleMediaUpload() {
@@ -291,12 +305,30 @@
                 console.log(file.type);
                 if(file.type.includes('video')) {
                     if(recording || "video" in recording || "audio" in recording || "transcript_list" in recording) {
-                        if(recording.video || recording.audio || recording.transcript_list) {
-                            let confirm = window.confirm("Uploading a new video will overwrite this recording. Do you want to proceed?");
+                        if(recording.video || recording.audio) {
+                            let confirm = window.confirm("Uploading a new video will overwrite this current media. Do you want to proceed?");
                             if(!confirm) {
                                 return;
                             }
-                            await deleteRecording();
+                            await deleteRecordingMedia();
+                            if(recording.audio) {
+                                recording.audio=null;
+                                recording.audio_path=null;
+                                recording=recording;
+                            }
+                            if(recording.video) {
+                                recording.video=null;
+                                recording.video_path=null;
+                                recording=recording;
+                            }
+
+                            // recording.transcript_list = [];
+                            // recording.transcript = "";
+                            // recording=recording;
+                            await saveRecording(recording);
+
+
+                            await logAction("FeedbackSelector: Remove media", recording);
                         }
                     }
                     // feedback_list=[];
@@ -313,8 +345,8 @@
 
                     let micSrc = await fetchAudio(micPath);
 
-                    let transcript=null; 
-                    let transcript_list = null; 
+                    let transcript=""; 
+                    let transcript_list = []; 
                     if(to_transcribe) {
                         load_status="Transcribing audio (this may take a while) ...";
                         progress=40;
@@ -345,18 +377,42 @@
                         transcript: transcript, 
                         transcript_list:transcript_list
                     };
-                    recording=newRecording;
+
+                    if(recording && ("transcript_list" in recording && recording.transcript_list)) {
+                        recording.video = videoSrc;
+                        recording.video_path = videoPath;
+                        recording.audio = micSrc;
+                        recording.audio_path = micPath;
+                        recording=recording;
+                        recording=recording;
+                    } else {
+                        recording = newRecording;
+                    }
+
+
                     micPath=null;
                     videoPath=null;
                     // await incrementRecordNumber();
                 } else if(file.type.includes('audio')) {
                     if(recording || "audio" in recording || "video" in recording || "transcript_list" in recording) {
-                        if(recording.audio || recording.video || recording.transcript_list) {
-                            let confirm = window.confirm("Uploading a new audio will overwrite this recording. Do you want to proceed?");
+                        if(recording.audio || recording.video) {
+                            let confirm = window.confirm("Uploading a new audio will overwrite this current media. Do you want to proceed?");
                             if(!confirm) {
                                 return;
                             }
-                            await deleteRecording();
+                            await deleteRecordingMedia();
+                            if(recording.audio) {
+                                recording.audio=null;
+                                recording.audio_path=null;
+                                recording=recording;
+                            }
+                            if(recording.video) {
+                                recording.video=null;
+                                recording.video_path=null;
+                                recording=recording;
+                            }
+                            await saveRecording(recording);
+                            await logAction("FeedbackSelector: Remove media", recording);
                         }
                     }
                     // feedback_list=[];
@@ -378,8 +434,8 @@
                     let json = await response.json();
                     micPath = json["filepath"];
 
-                    let transcript=null; 
-                    let transcript_list = null; 
+                    let transcript=""; 
+                    let transcript_list = []; 
 
                     if(to_transcribe) {
                         // Transcribe the audio
@@ -409,7 +465,16 @@
                         transcript: transcript, 
                         transcript_list:transcript_list
                     };
-                    recording = newRecording;
+
+                    if(recording && ("transcript_list" in recording && recording.transcript_list)) {
+                        recording.audio = audioSrc;
+                        recording.audio_path = micPath;
+                        recording=recording;
+                        recording=recording;
+                    } else {
+                        recording = newRecording;
+                    }
+
                     micPath=null;
                     videoPath=null;
                     // await incrementRecordNumber();
@@ -434,15 +499,24 @@
                 if(file.name.endsWith('.srt')) {
 
                     if(recording || "transcript" in recording || "transcript_list" in recording) {
-                        if(recording.transcript || recording.transcript_list) {
-                            let confirm = window.confirm("Uploading a new transcript will overwrite the current transcript. Do you want to proceed?");
-                            if(!confirm) {
-                                return;
+                        if(recording.transcript_list) {
+                            if(recording.transcript_list.length > 0) {
+                                let confirm = window.confirm("Uploading a new transcript will overwrite this current transcript. Do you want to proceed?");
+                                if(!confirm) {
+                                    return;
+                                }
+                                removeAllFeedback();
+                                feedback_list=[];
+                                recording.transcript_list = [];
+                                recording.transcript = "";
+                                recording=recording;
+                                await saveRecording(recording);
+                                await logAction("FeedbackSelector: Remove transcript", recording);
                             }
-                            await deleteRecording();
                         }
+                        
                     }
-                    // feedback_list=[];
+                    
 
                     let reader = new FileReader();
 
@@ -778,7 +852,7 @@
                     <img src="./logos/down-arrow-5-svgrepo-com.svg" alt="Next feedback" class="logo" style="width: 1.5rem; height: 1.5rem;">  
                 </button>
             </div>
-            {#if recording && recording.transcript_list}
+            {#if recording && recording.transcript_list && recording.transcript_list.length > 0}
                 <p class="padded"> 
                     {#each recording.transcript_list as excerpt, i}
                         <div class="spaced">
@@ -801,7 +875,8 @@
                 </p>
             {:else}
                 <div class="centered" style="height: 100%; width: 100%;">
-                    <span> No discussion transcript loaded. Please first record or upload your discussion. </span>
+                    <!-- <span> No discussion transcript loaded. Please first record or upload your discussion. </span> -->
+                    <span> No discussion transcript loaded. Please first upload your transcript. </span>
                 </div>
                 
             {/if}
@@ -862,7 +937,7 @@
                         </div>
                     </div>
                     <span>or</span> -->
-                    <div class="row centered spaced">
+                    <div class="column centered spaced">
                         <div class="column spaced centered">
                             <label for="file_upload" >Upload your own video or audio: </label>
                             <div class="row centered spaced">
@@ -901,13 +976,38 @@
                                     Upload file 
                                 </button> 
                                 
+                                {#if recording.video || recording.audio}
+                                    <button class="action-button centered row " on:click={async () => {
+                                        let confirm = window.confirm("This cannot be undone. Do you want to proceed?");
+                                        if(confirm) {
+                                            // recording = {};
+                                            await deleteRecordingMedia();
+                                            if(recording.audio) {
+                                                recording.audio=null;
+                                                recording.audio_path=null;
+                                                recording=recording;
+                                            }
+                                            if(recording.video) {
+                                                recording.video=null;
+                                                recording.video_path=null;
+                                                recording=recording;
+                                            }
+                                            await saveRecording(recording);
+                                            await logAction("FeedbackSelector: Remove media", recording);
+                                        }
+                                    }} 
+                                    disabled={is_loading}> 
+                                        <img src="./logos/delete-x-svgrepo-com.svg" alt="Delete media" class="mini-icon">
+                                        Remove media
+                                    </button> 
+                                {/if}
                             </div>
                         </div>
 
                         <div class="column spaced centered">
                             <label for="file_upload" >Upload your own transcript (in .srt only): </label>
-                            <div class="row centered">
-                                <input bind:value={transcript_files} bind:this={transcript_fileinput} name="transcirptfile_upload"type="file" id="transcriptfile_upload" accept=" .srt"
+                            <div class="row centered spaced">
+                                <input style="width: 50%;" bind:value={transcript_files} bind:this={transcript_fileinput} name="transcirptfile_upload"type="file" id="transcriptfile_upload" accept=" .srt"
                                     on:change={async (e) => {
                                         transcript_files = e.target.files;
                                         await logAction("FeedbackSelector: Select transcript file", transcript_files);
@@ -925,6 +1025,24 @@
                                     <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
                                     Upload file
                                 </button> 
+                                {#if recording.transcript_list && recording.transcript_list.length > 0}
+                                    <button class="action-button centered row " on:click={async () => {
+                                        let confirm = window.confirm("This cannot be undone. Do you want to proceed?");
+                                        if(confirm) {
+                                            removeAllFeedback();
+                                            feedback_list=[];
+                                            recording.transcript_list = [];
+                                            recording.transcript = "";
+                                            recording=recording;
+                                            await saveRecording(recording);
+                                            await logAction("FeedbackSelector: Remove transcript", recording);
+                                        }
+                                    }} 
+                                    disabled={is_loading}> 
+                                        <img src="./logos/delete-x-svgrepo-com.svg" alt="Delete transcript" class="mini-icon">
+                                        Remove transcript
+                                    </button> 
+                                {/if}
                             </div>
                         </div>
                         
@@ -1012,7 +1130,7 @@
                             Highlight <br> Critical 
                         </button>
                         <button class="action-button"
-                            disabled={!recording || !recording.transcript_list || is_loading}
+                            disabled={!recording || !recording.transcript_list || is_loading || feedback_list.length <= 0}
                             on:click={async () => {
                                 let selection = removeFeedback();
                                 await saveFeedbackList(feedback_list);
@@ -1024,7 +1142,7 @@
                             Remove <br> Feedback
                         </button>
                         <button class="action-button"
-                            disabled={!recording || !recording.transcript_list || is_loading}
+                            disabled={!recording || !recording.transcript_list || is_loading || feedback_list.length <= 0}
                             on:click={async () => {
                                 removeAllFeedback();
                                 await saveFeedbackList(feedback_list);
@@ -1059,7 +1177,7 @@
         <div id="feedback-details-area" class="bordered padded spaced" style="overflow-y:auto;">
             <h3 style="font-weight: bold; text-decoration: underline;"> Discussion Transcript Details </h3>
             {#if recording && recording.transcript_list}
-                {#if "speaker" in recording.transcript_list[0]} 
+                {#if recording.transcript_list && recording.transcript_list.length > 0 &&  "speaker" in recording.transcript_list[0]} 
                     <strong> Number of participants: {Object.keys(recording.transcript_list.reduce((acc, cur) => {
                         acc[cur.speaker] = true;
                         return acc;
