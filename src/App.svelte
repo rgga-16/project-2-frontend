@@ -1540,6 +1540,7 @@
         const data = await username_response.json();
         if(!username_response.ok) {
             alert(data.message);
+            return;
         } else if (username_response.ok) {
             uID = data.user_id;
             setCookie("username", uname, 30);
