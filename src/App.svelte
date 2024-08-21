@@ -14,6 +14,11 @@
     let progress = 0;
     let load_status = "Initializing...";
 
+    let left_display_styles={
+        0:"grid",
+        1:"row",
+    };
+
 	let recording={};
 	// let recording={
     //     "video": null,
@@ -1794,7 +1799,8 @@
                     bind:feedback_list={feedback_list} 
                     bind:recording={recording}
                     bind:my_notes={my_notes}
-                    bind:feedback_notes={feedback_notes}/>
+                    bind:feedback_notes={feedback_notes}
+                    bind:left_display_styles={left_display_styles}/>
                 </div>
             {/if}
 
