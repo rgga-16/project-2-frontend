@@ -190,7 +190,7 @@
     }
 
     async function embedTranscriptList(transcript_list) {
-        const response = await fetch("/embed_transcript2", {
+        const response = await fetch("/embed_transcript", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

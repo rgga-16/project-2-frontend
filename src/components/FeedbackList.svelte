@@ -805,7 +805,7 @@
                                         <div class="suggested-message" on:click|preventDefault={
                                                 async () => {
                                                     if(!is_loading) {
-                                                        await sendMessage("Can you paraphrase the following feedback positively?",context);
+                                                        await sendMessage("Can you explain the following feedback?",context);
                                                     }
                                                 }
                                             } >
