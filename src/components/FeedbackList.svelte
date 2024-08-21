@@ -487,6 +487,7 @@
                                         </div>
                                         
                                         <br>
+                                        <strong>F#{feedback.id}: </strong>
                                         {#if feedback.positivised_quote && feedback.show_paraphrased}
                                             <strong>(Paraphrased Feedback)</strong> "{feedback.positivised_quote}" 
                                             <span class="clickable" 
@@ -724,6 +725,7 @@
                                         </div>
                                         
                                         <br>
+                                        <strong>F#{feedback.id}: </strong>
                                         {#if feedback.positivised_quote && feedback.show_paraphrased}
                                             <strong>(Paraphrased Feedback)</strong> "{feedback.positivised_quote}" 
                                             <span class="clickable" 
