@@ -5,6 +5,7 @@
     import {saveFeedbackList, saveDisplayChatbotMessages, saveMyNotes, saveMyFeedbackNotes} from '../savers.js';
     import LoadingBar from './LoadingBar.svelte';
     import Range from './Range.svelte';
+    import SvelteMarkdown from 'svelte-markdown';
 
     export let feedback_list;
     export let recording; 
@@ -1056,9 +1057,12 @@
                                                     
                                                 </div>
                                             </div>
-                                            <div class="row">
+                                            <div >
                                                 <strong> {message.role}: </strong>
-                                                <md-block>  {message.content} </md-block>
+
+                                                <SvelteMarkdown source={message.content} />
+
+                                                <!-- <md-block>  {message.content} </md-block> -->
                                             </div>
                                             {#if "image" in message && message.role==="user"}
                                                 <div class="column centered" style="width: 100%;">
@@ -1289,7 +1293,12 @@
                                 {#if my_notes.length > 0}
                                     {#each my_notes as note, i}
                                         <div class="row padded bordered space-between"> 
-                                            <p style="width: 95%; align-items: flex-start;">{note}</p>
+                                            <div style="width: 95%; align-items: flex-start;">
+                                                <SvelteMarkdown source={note} />
+                                            </div>
+                                            <!-- <p style="width: 95%; align-items: flex-start;">
+                                                {note}
+                                            </p> -->
                                             <div class="row spaced" style="width: 5%; align-items: flex-start;">
                                                 <!-- <button> Edit </button> -->
                                                 <button class="action-button" on:click={async () => {
@@ -1389,7 +1398,10 @@
                                         {#if feedback_notes[key].notes.length > 0}
                                             {#each feedback_notes[key].notes as note, i}
                                                 <div class="row padded bordered space-between"> 
-                                                    <p style="width: 95%;">{note}</p>
+                                                    <!-- <p style="width: 95%;">{note}</p> -->
+                                                    <div style="width: 95%; align-items: flex-start;">
+                                                        <SvelteMarkdown source={note} />
+                                                    </div>
                                                     <div class="row space-between" style="width: 5%; align-items: flex-start;">
                                                         <!-- <button class="action-button"> Edit </button> -->
                                                         <button class="action-button" on:click={async () => {
