@@ -1,7 +1,6 @@
 
 import {get} from 'svelte/store';
 import { copyToClipboard } from '@svelte-put/copy'; //https://svelte-put.vnphanquang.com/docs/copy#installation
-import {marked} from 'marked'; //https://marked.js.org/
 
 export async function pause(milliseconds) {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
