@@ -16,7 +16,7 @@
 
     let left_display_styles={
         0:"grid",
-        1:"row",
+        1:"grid",
     };
 
 	let recording={};
@@ -1563,6 +1563,10 @@
         
         uname = "";
         uID = "";
+        recording = {};
+        my_notes = [];
+        feedback_notes = {};
+        feedback_list = [];
         documents = [];
         feedback_list = [];
         chatbot_messages = [{

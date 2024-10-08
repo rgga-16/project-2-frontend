@@ -1,4 +1,35 @@
 
+export async function saveChatbotSettings(settings_dict) {
+    const response = await fetch('/save_chatbot_settings', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({settings_dict: settings_dict})
+    });
+    if(!response.ok) {
+        throw new Error('Failed to save chatbot settings');
+    }
+
+    let response_json = await response.json();
+    if("message" in response_json) {
+        console.log(response_json["message"]);
+    }
+    return response_json["message"];
+}
+
+export async function getChatbotSettings() {
+
+    const response = await fetch('/get_chatbot_settings');
+    if(!response.ok) {
+        throw new Error('Failed to get chatbot settings');
+    }
+
+    let response_json = await response.json();
+    return response_json;
+
+}
+
 export async function saveRecording(recording) {
 
     const response = await fetch('/save_recording', {
