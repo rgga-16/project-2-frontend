@@ -36,6 +36,8 @@
 
     let mediaPlayer;
     let inputMessage = "";
+    let referToTranscript=true;
+    let referToDocuments=true; 
     
     let selected_feedback; 
 
@@ -190,7 +192,9 @@
             image_data: null,
             max_output_tokens: chatbot_max_output_tokens,
             temperature: chatbot_temperature,
-            model: chatbot_models[selected_chatbot]
+            model: chatbot_models[selected_chatbot],
+            refer_to_transcript: referToTranscript,
+            refer_to_documents: referToDocuments
         };
 
         image_url ? message["image"] = image_url : null;
@@ -945,7 +949,8 @@
                                     {/each}
                                 </select>
                             </div>
-                            
+
+
                             <button class="action-button" on:click={async ()=> {
                                     show_chatbot_settings=!show_chatbot_settings;
                                     await logAction("FeedbackList: Toggled chatbot settings", show_chatbot_settings);
@@ -1082,7 +1087,7 @@
 
                             <div id="chatbot-actions" class="column padded spaced centered">
                                 <div id="chatbot-utilities" class="row centered spaced" >
-                                    <div id="contexts" class="column centered bordered" style={image_url ? "width:30%;" : "width:45%;"}>
+                                    <div id="contexts" class="column centered bordered" style={image_url ? "width:25%;" : "width:33%;"}>
                                         <span><strong>Feedback Context:</strong></span>
                                         {#if context}
                                             <div class="suggested-message row "> 
@@ -1099,7 +1104,7 @@
                                             <span> None. Add by selecting from the feedback.</span>
                                         {/if}
                                     </div>
-                                    <div id="suggested-messages" class="column centered bordered" style={image_url ? "width:30%;" : "width:45%;"}>
+                                    <div id="suggested-messages" class="column centered bordered" style={image_url ? "width:25%;" : "width:33%;"}>
                                         <span><strong>Suggested messages:</strong></span>
                                         <div class="suggested-message" on:click|preventDefault={
                                                 async () => {
@@ -1120,7 +1125,17 @@
                                             Brainstorm actions.
                                         </div>
                                     </div>
-                                    <div id="visual-context" class="column centered bordered" style={image_url ? "width:30%;" : "display:none;"}>
+                                    <div id="refer-to" class="column centered bordered" style={image_url ? "width:25%;" : "width:33%;"}>
+                                        <span><strong>Refer to:</strong></span>
+                                        <label class="row centered spaced">
+                                            <input type="checkbox" bind:checked={referToTranscript} > Transcript
+                                        </label>
+                                        <label class="row centered spaced">
+                                            <input type="checkbox" bind:checked={referToDocuments} > Documents
+                                        </label>
+                                        
+                                    </div>
+                                    <div id="visual-context" class="column centered bordered" style={image_url ? "width:25%;" : "display:none;"}>
                                         {#if image_url}
                                             <span><strong>Attached image:</strong></span>
                                             <div class="row" style="width:100%; height:100%;">
@@ -1202,7 +1217,7 @@
 
                                 </div>
                                 <div id="chatbot-rag-panel" class="column centered spaced padded bordered" >
-                                    <span> <strong> Chatbot's Resources </strong> </span>
+                                    <span> <strong> Chatbot's Documents </strong> </span>
 
                                     <div id="chatbot-rag-sources" class="column centered spaced padded bordered" style="width:100%; height:auto; overflow-y:auto;">
                                         <div class="overlay centered padded" class:invisible = {is_document_loading===false}>
