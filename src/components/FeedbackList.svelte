@@ -6,6 +6,18 @@
     import LoadingBar from './LoadingBar.svelte';
     import Range from './Range.svelte';
     import SvelteMarkdown from 'svelte-markdown';
+    import { register, init, t, addMessages, locale } from 'svelte-i18n';
+    import en from "../locales/en.json";
+    import ja from "../locales/ja.json";
+
+    export let currentLocale;
+
+    addMessages("en", en)
+    addMessages("ja", ja)
+    init({
+        fallbackLocale: 'en',
+        initialLocale: currentLocale,
+    });
 
     export let feedback_list;
     export let recording; 
@@ -56,10 +68,13 @@
 
 
     let left_panel_tabs = [
-        "Critical Feedback", "Positive Feedback"
+        $t("Critical Feedback"), 
+        $t("Positive Feedback")
     ]
     let right_panel_tabs = [
-        "Transcript", "Chatbot","Notes"
+        $t("Transcript"), 
+        $t("Chatbot"),
+        $t("Notes")
     ]
 
     let is_loading=false; 
@@ -513,7 +528,9 @@
                         <div class="column" style="overflow-y: auto;">
                             <div class="feedback-header row" >
                                 <span class="centered row id-col" style="gap: 0.4rem;">
-                                    <strong>ID</strong>
+                                    <strong>
+                                        {$t("ID")}
+                                    </strong>
                                     <button class="action-button" on:click={async () => {sortFeedbackList('id'); await logAction("FeedbackList: Sorted feedback", 'id')}}>
                                         {#if sortAscending && sortKey==='id'}
                                             <img style="height: 1rem; width: 1rem;" src="./logos/ascending-sort-svgrepo-com.svg" alt="Sort ascending" class="mini-icon">
@@ -523,7 +540,9 @@
                                     </button>
                                 </span>
                                 <span  class="centered row spaced feedback-col">
-                                    <strong>Feedback</strong>
+                                    <strong>
+                                        {$t("Feedback")}
+                                    </strong>
                                     <button class="action-button" on:click={async () => {sortFeedbackList('quote'); await logAction("FeedbackList: Sorted feedback", 'quote')}}>
                                         {#if sortAscending && sortKey==='quote'}
                                             <img style="height: 1rem; width: 1rem;" src="./logos/ascending-sort-svgrepo-com.svg" alt="Sort ascending" class="mini-icon">
@@ -533,7 +552,9 @@
                                     </button>
                                 </span>
                                 <span class="centered row spaced speaker-col">
-                                    <strong>Speaker</strong>
+                                    <strong>
+                                        {$t("Speaker")}
+                                    </strong>
                                     <button class="action-button" on:click={async () => {sortFeedbackList('speaker'); await logAction("FeedbackList: Sorted feedback", 'speaker')}}>
                                         {#if sortAscending && sortKey==='speaker'}
                                             <img style="height: 1rem; width: 1rem;" src="./logos/ascending-sort-svgrepo-com.svg" alt="Sort ascending" class="mini-icon">
@@ -543,10 +564,14 @@
                                     </button>
                                 </span>
                                 <span id="feedback-buttons"  class="centered row actions-col">
-                                    <strong>Actions</strong>
+                                    <strong>
+                                        {$t("Actions")}
+                                    </strong>
                                 </span>
                                 <span  class="centered row spaced done-col">
-                                    <strong>Done?</strong>
+                                    <strong>
+                                        {$t("Done?")}
+                                    </strong>
                                     <button class="action-button" on:click={async () => {sortFeedbackList('done'); await logAction("FeedbackList: Sorted feedback", 'done')}}>
                                         <img style="height: 1rem; width: 1rem;" src={sortAscending && sortKey==='done' ? "./logos/ascending-sort-svgrepo-com.svg" :  "./logos/descending-sort-svgrepo-com.svg"} alt={sortAscending && sortKey==='done' ? "Sort ascending" : "Sort descending"} class="mini-icon">
                                     </button>
@@ -609,7 +634,7 @@
                                                 await logAction("FeedbackList: Positivize Quote", feedback);
                                             }}>
                                                 <img src="./logos/ai-positive-paraphrase.png" alt="Paraphrase positively" class="action-icon">
-                                                Positivize
+                                                {$t("Positivize")}
                                             </button>
 
                                             <button class="action-button centered column" on:click={async () => {
@@ -618,7 +643,7 @@
                                                 await logAction("FeedbackList: Select as context", context);
                                             }}>
                                                 <img src="./logos/select-context.svg" alt="Select feedback as context" style="height: 3.3rem; width: 3.3rem;">
-                                                Select Context
+                                                {$t("Select Context")}
                                             </button>
                                             <button class="action-button" on:click={async () => {
                                                 active_right_tab = 2;
@@ -629,7 +654,7 @@
                                                 }
                                             }}>
                                                 <img src="./logos/note-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
-                                                Add Note
+                                                {$t("Add Note")}
                                             </button>
                                             <button class="action-button" on:click={async () => {
                                                 let confirm = window.confirm("Are you sure you want to delete this feedback? This cannot be undone.");
@@ -642,7 +667,7 @@
                                                 await logAction("FeedbackList: Remove critical feedback", feedback);
                                             }}>
                                                 <img src="./logos/delete-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
-                                                Delete
+                                                {$t("Delete")}
                                             </button>
                                             
                                         </div>
@@ -867,7 +892,7 @@
                                                 }
                                             }}>
                                                 <img src="./logos/note-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
-                                                Add Note
+                                                {$t("Add Note")}
                                             </button>
                                             <button class="action-button" on:click={async () => {
                                                 let confirm = window.confirm("Are you sure you want to delete this feedback? This cannot be undone.");
@@ -880,7 +905,7 @@
                                                 await logAction("FeedbackList: Remove positive feedback", feedback);
                                             }}>
                                                 <img src="./logos/delete-svgrepo-com.svg" alt="Remove feedback" class="action-icon">
-                                                Delete
+                                                {$t("Delete")}
                                             </button>
                                             
                                         </div>
@@ -942,7 +967,9 @@
                     <div id="chatbot-tab-content" class="column">
                         <div id="chatbot-header" class="padded row space-between">
                             <div class:gone={show_chatbot_settings} class="row spaced centered" style="height: auto; width: 100%;">
-                                <span>Model: </span>
+                                <span>
+                                    {$t("Model")}:
+                                </span>
                                 <select bind:value={selected_chatbot} >
                                     {#each Object.keys(chatbot_models) as model}
                                         <option value={model}>{model}</option>
@@ -965,7 +992,11 @@
                         {#if !show_chatbot_settings} 
                             <div id="chatbot-messages" class="column spaced bordered padded">
                                 <div class="assistant padded">
-                                    <p> <strong> assistant: </strong> Hello! How can I help you today? </p>
+                                    <p> <strong> 
+                                        {$t("assistant")}:
+                                    </strong> 
+                                        {$t("Hello! How can I help you today?")}
+                                    </p>
                                 </div>
                                 {#each chatbot_messages as message} 
                                     {#if message.role != "system"}
@@ -974,15 +1005,22 @@
                                                 <div class="row spaced">
                                                     {#if "context" in message}
                                                         <div class="context-tag feedback">
-                                                            <small>Context: F#{message.context.id} {
-                                                                message.context.quote.length > 40 ? message.context.quote.slice(0,40)+"..." : message.context.quote
-                                                            }</small>
+                                                            <small>
+                                                                {$t("Context: F#", {values:{id: message.context.id}})} 
+                                                                {
+                                                                    message.context.quote.length > 40 ? message.context.quote.slice(0,40)+"..." : message.context.quote
+                                                                }
+                                                            </small>
                                                         </div>
                                                     {/if}
                                                     {#if "image" in message}
                                                         <div class="context-tag image">
                                                             <small>
-                                                                {message.role === "user" ? "Attached image" : "Response to image"}
+                                                                {message.role === "user" ? 
+                                                                $t("Attached image")
+                                                                : 
+                                                                $t("Response to image")
+                                                                }
                                                             </small>
                                                         </div>
                                                     {/if}
@@ -994,7 +1032,9 @@
                                                         await saveMyNotes(my_notes);
                                                         await logAction("FeedbackList: Added note to My Notes", message);                                                        
                                                     }}> 
-                                                        <small> Add to My Notes </small>
+                                                        <small> 
+                                                            {$t("Add to My Notes")}
+                                                        </small>
                                                         <img src="./logos/note-svgrepo-com.svg" alt="Add to my notes" class="mini-icon">
                                                     </button>
                                                     
@@ -1005,7 +1045,10 @@
                                                             await saveMyFeedbackNotes(feedback_notes);
                                                             await logAction("FeedbackList: Added note to Feedback ID"+message.context.id, message);                                                        
                                                         }}> 
-                                                            <small> Add to F#{message.context.id} Notes </small>
+                                                            <small> 
+                                                                <!-- Add to F#{message.context.id} Notes  -->
+                                                                {$t("Add to Feedback Notes", {values: {id: message.context.id}})}
+                                                            </small>
                                                             <img src="./logos/note-svgrepo-com.svg" alt="Add feedback note" class="mini-icon">
                                                         </button>
                                                     {/if}
@@ -1079,7 +1122,9 @@
                                     {/if}
                                 {/each}
                                 <div class="assistant padded column" class:invisible={is_loading===false}>
-                                    <p> <strong> assistant: </strong>  </p>
+                                    <p> <strong> 
+                                        {$t("assistant")}:
+                                    </strong>  </p>
                                     <LoadingBar bind:progress={chatbot_load_progress} bind:status={chatbot_load_status} />
                                 </div>
                                 <div style="height: 20%; width: 100%; background-color:white; color:white; cursor: default;"></div> 
@@ -1088,7 +1133,9 @@
                             <div id="chatbot-actions" class="column padded spaced centered">
                                 <div id="chatbot-utilities" class="row centered spaced" >
                                     <div id="contexts" class="column centered bordered" style={image_url ? "width:25%;" : "width:33%;"}>
-                                        <span><strong>Feedback Context:</strong></span>
+                                        <span><strong>
+                                            {$t("Feedback Context")}:
+                                        </strong></span>
                                         {#if context}
                                             <div class="suggested-message row "> 
                                                 <span>F#{context.id}:{context.quote.slice(0, 30)}... </span>
@@ -1101,11 +1148,15 @@
                                                 </button>
                                             </div>
                                         {:else}
-                                            <span> None. Add by selecting from the feedback.</span>
+                                            <span> 
+                                                {$t("None. Add by selecting from the feedback")}.
+                                            </span>
                                         {/if}
                                     </div>
                                     <div id="suggested-messages" class="column centered bordered" style={image_url ? "width:25%;" : "width:33%;"}>
-                                        <span><strong>Suggested messages:</strong></span>
+                                        <span><strong>
+                                            {$t("Suggested messages")}:
+                                        </strong></span>
                                         <div class="suggested-message" on:click|preventDefault={
                                                 async () => {
                                                     if(!is_loading) {
@@ -1113,7 +1164,8 @@
                                                     }
                                                 }
                                             } >
-                                            Explain feedback.
+                                            
+                                            {$t("Explain feedback")}
                                         </div>
                                         <div class="suggested-message" on:click|preventDefault={
                                                 async () => {
@@ -1122,16 +1174,18 @@
                                                     }
                                                 }
                                             }>
-                                            Brainstorm actions.
+                                            {$t("Brainstorm actions")}
                                         </div>
                                     </div>
                                     <div id="refer-to" class="column centered bordered" style={image_url ? "width:25%;" : "width:33%;"}>
-                                        <span><strong>Refer to:</strong></span>
+                                        <span><strong>
+                                            {$t("Refer to")}:
+                                        </strong></span>
                                         <label class="row centered spaced">
-                                            <input type="checkbox" bind:checked={referToTranscript} > Transcript
+                                            <input type="checkbox" bind:checked={referToTranscript} > {$t("Transcript")}
                                         </label>
                                         <label class="row centered spaced">
-                                            <input type="checkbox" bind:checked={referToDocuments} > Documents
+                                            <input type="checkbox" bind:checked={referToDocuments} > {$t("Documents")}
                                         </label>
                                         
                                     </div>
@@ -1183,7 +1237,7 @@
                                         </button>
                                     </div>
                                     
-                                    <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, context)}"  placeholder="Type your message here..." id="textarea"></textarea>
+                                    <textarea bind:value="{inputMessage}" style="width:100%;height:100%;" on:keydown="{e => e.key==='Enter' && sendMessage(inputMessage, context)}"  placeholder={$t("Type your message here")} id="textarea"></textarea>
                                     <button class="action-button centered column" disabled={is_loading} on:click|preventDefault={async () => { 
                                             
                                             await sendMessage(inputMessage,  context);
@@ -1197,9 +1251,13 @@
                         {:else}
                             <div id="chatbot-settings" class="column padded spaced" style="width: 100%; height: 95%;">
                                 <div id="chatbot-configurations" class="column centered spaced padded bordered">
-                                    <span> <strong> Configurations </strong> </span>
+                                    <span> <strong> 
+                                        {$t("Configurations")} 
+                                    </strong> </span>
                                     <div class="row spaced centered" style="height: auto; width: 100%;">
-                                        <span>Model: </span>
+                                        <span>
+                                            {$t("Model")}:
+                                        </span>
                                         <select bind:value={selected_chatbot} >
                                             {#each Object.keys(chatbot_models) as model}
                                                 <option value={model}>{model}</option>
@@ -1207,17 +1265,23 @@
                                         </select>
                                     </div>
                                     <div class="row spaced" style="height: auto; width: 100%;">
-                                        <span>Temperature: </span>
+                                        <span>
+                                            {$t("Temperature")}: 
+                                        </span>
                                         <Range min=0.0 max=2.0 step=0.1 bind:value={chatbot_temperature} />
                                     </div>
                                     <div class="row spaced" style="height: auto; width: 100%;">
-                                        <span>Max Output Tokens: </span>
+                                        <span>
+                                            {$t("Max Output Tokens")}: 
+                                        </span>
                                         <Range min=10.0 max=4095.0 step=1.0 bind:value={chatbot_max_output_tokens} />
                                     </div>
 
                                 </div>
                                 <div id="chatbot-rag-panel" class="column centered spaced padded bordered" >
-                                    <span> <strong> Chatbot's Documents </strong> </span>
+                                    <span> <strong> 
+                                        {$t("Chatbot's Documents")} 
+                                    </strong> </span>
 
                                     <div id="chatbot-rag-sources" class="column centered spaced padded bordered" style="width:100%; height:auto; overflow-y:auto;">
                                         <div class="overlay centered padded" class:invisible = {is_document_loading===false}>
@@ -1273,7 +1337,7 @@
                                             }}
                                         >
                                             <img src="./logos/add-ellipse-svgrepo-com.svg" alt="Add document" class="action-icon">
-                                            Add Document
+                                            {$t("Add Document")}
                                         </button>
                                         <button disabled={is_document_loading} class="centered spaced column action-button"
                                             on:click={async () => {
@@ -1289,7 +1353,7 @@
                                             }}
                                         >
                                             <img src="./logos/delete-svgrepo-com.svg" alt="Remove all documents" class="action-icon">
-                                            Remove All
+                                            {$t("Remove All")}
                                         </button>
                                     </div>
                                 </div>
@@ -1302,7 +1366,9 @@
                     <div class="column spaced padded" style="width: 100%; height: 100%; overflow-y: auto;">
                         <div class="column centered spaced padded" style="width:100%; height:auto;">
                             <div class="row centered" style="width:100%; height:auto;">
-                                <span style="text-decoration: underline;"> <strong>  My Notes </strong></span>
+                                <span style="text-decoration: underline;"> <strong>  
+                                    {$t("My Notes")} 
+                                </strong></span>
                             </div>
                             <div class="column bordered" class:centered={my_notes.length <= 0} style="width:100%; height:auto;">
                                 {#if my_notes.length > 0}
@@ -1333,7 +1399,7 @@
                                 {/if}
                                 {#if adding_note} 
                                     <div class="row padded bordered space-between" style="width:100%; height:auto;"> 
-                                        <input class="note-input" type="text" bind:value={temp_note} placeholder="Enter your note here"/>
+                                        <input class="note-input" type="text" bind:value={temp_note} placeholder={$t("Enter your note here")}/>
                                         <div class="row spaced">
                                             <button class="action-button" on:click={async () => {
                                                 confirmNote(); 
@@ -1363,7 +1429,7 @@
                                     }}
                                 > 
                                     <img src="./logos/note-svgrepo-com.svg" alt="Add Note" class="action-icon">
-                                    Add Note
+                                    {$t("Add Note")}
                                 </button>
                                 <button class="action-button centered column"
                                     on:click={async() => {
@@ -1377,7 +1443,7 @@
                                         await logAction("FeedbackList: Removed all notes from My Notes", my_notes);
                                 }}> 
                                     <img src="./logos/delete-svgrepo-com.svg" alt="Delete all notes" class="action-icon">
-                                    Delete all 
+                                    {$t("Delete all")}
                                     
                                 </button>
                             </div>
@@ -1390,7 +1456,9 @@
                             {#each Object.keys(feedback_notes).map(Number).sort((a, b) => a - b) as key}
                                 <div id={"feedback-note-section-"+key} class="column centered spaced padded" style="width:100%; height:auto;">
                                     <div class="row space-between" style="width:100%; height:auto;">
-                                        <span> <strong> Feedback #{key} Notes: </strong> {feedback_list[key-1].quote.slice(0, 70)}...</span>
+                                        <span> <strong> 
+                                            {$t("Feedback # Notes", {values: {id: key}})}:
+                                        </strong> {feedback_list[key-1].quote.slice(0, 70)}...</span>
                                         <button class="action-button" on:click={async () => {
                                             let string = "Are you sure you want to delete this feedback notes section? This cannot be undone";
                                             if(feedback_notes[key].notes.length > 0) {
@@ -1436,7 +1504,7 @@
                                         {/if}   
                                         {#if feedback_notes[key].is_adding} 
                                             <div class="row padded bordered space-between" style="width:100%; height:auto;"> 
-                                                <input class="note-input" type="text" bind:value={temp_note} placeholder="Enter your note here" />
+                                                <input class="note-input" type="text" bind:value={temp_note} placeholder={$t("Enter your note here")} />
                                                 <div class="row spaced">
                                                     <button class="action-button" on:click={async () => {
                                                         confirmNote(key);
@@ -1465,7 +1533,7 @@
                                             }}
                                         > 
                                             <img src="./logos/note-svgrepo-com.svg" alt="Add Note" class="action-icon">
-                                            Add Note
+                                            {$t("Add Note")}
                                         </button>
                                         <button class="action-button centered column"
                                             on:click={async() => {
@@ -1479,7 +1547,7 @@
                                                 await logAction("FeedbackList: Removed all notes from Feedback ID"+key, feedback_notes[key].notes);
                                             }}> 
                                             <img src="./logos/delete-svgrepo-com.svg" alt="Delete all notes" class="action-icon">
-                                            Delete all  
+                                            {$t("Delete all")}
                                         </button>
                                     </div>
                                 </div>
@@ -1487,7 +1555,7 @@
                         {:else}
                             <div class="column centered spaced padded" style="width:100%; height:auto;">
                                 <div class="row space-between centered" style="width:100%; height:auto;">
-                                    <span> No feedback notes added. Feel free to add notes on your feedback by clicking "Add Note" on any of the critical feedback.</span>
+                                    <span> No feedback notes added. Feel free to add notes on your feedback by clicking "{$t("Add Note")}" on any of the feedback.</span>
                                 </div>
                             </div>
                         {/if}

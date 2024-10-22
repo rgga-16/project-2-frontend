@@ -3,6 +3,18 @@
     import LoadingBar from './LoadingBar.svelte';
     import {seekTo, focusOnFeedback, logAction, pause} from '../utils.js';
     import {saveFeedbackList, saveRecording} from '../savers.js';
+    import { register, init, t, addMessages, locale } from 'svelte-i18n';
+    import en from "../locales/en.json";
+    import ja from "../locales/ja.json";
+
+    export let currentLocale;
+
+    addMessages("en", en)
+    addMessages("ja", ja)
+    init({
+        fallbackLocale: 'en',
+        initialLocale: currentLocale,
+    });
     
     export let recording = {};
     export let feedback_list = [];
@@ -825,9 +837,11 @@
 
             <div id="traverse-feedback-area" class="bordered spaced" >
                 {#if feedback_list && feedback_list.length > 0}
-                    <span> {feedback_idx+1} of {feedback_list.length} feedback moments highlighted </span>
+                    <span> {feedback_idx+1} / {feedback_list.length} {$t("feedback moments")} </span>
                 {:else}
-                    <span> No feedback moments highlighted. </span>
+                    <span> 
+                        {$t("No feedback moments highlighted")}
+                    </span>
                 {/if}
                 <button disabled={!feedback_list || feedback_list.length <= 0} on:click={async () => {
                     if(feedback_idx > 0) {
@@ -876,14 +890,18 @@
             {:else}
                 <div class="centered" style="height: 100%; width: 100%;">
                     <!-- <span> No discussion transcript loaded. Please first record or upload your discussion. </span> -->
-                    <span> No discussion transcript loaded. Please first upload your transcript. </span>
+                    <span> 
+                        {$t("No discussion transcript loaded. Please first upload your transcript.")} 
+                    </span>
                 </div>
                 
             {/if}
         </div>
         <div id="transcript-buttons-area" class="row centered spaced bordered">
             <div id="capture-feedback-panel" class="column padded centered spaced">
-                <span style="font-weight: bold; text-decoration: underline; margin-left: 1rem;"> Step 1: Upload your discussion.</span>
+                <span style="font-weight: bold; text-decoration: underline; margin-left: 1rem;"> 
+                    {$t('Step 1: Upload your discussion.')}
+                </span>
                 <div class="row centered spaced">
                     <!-- <div class="column centered">
                         <span >Screen record your discussion</span>
@@ -939,7 +957,9 @@
                     <span>or</span> -->
                     <div class="column centered spaced">
                         <div class="column spaced centered">
-                            <label for="file_upload" >Upload your own video or audio: </label>
+                            <label for="file_upload" >
+                                {$t('Upload your own video or audio')}:
+                            </label>
                             <div class="row centered spaced">
                                 <input style="width: 50%;" bind:value={media_files} bind:this={mediafile_input} name="mediafile_upload"type="file" id="mediafile_upload" accept="video/*, audio/*"
                                     on:change={async (e) => {
@@ -973,7 +993,7 @@
                                         }} 
                                 disabled={is_loading || !media_files || media_files.length===0}> 
                                     <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
-                                    Upload file 
+                                    {$t('Upload file')} 
                                 </button> 
                                 
                                 {#if recording.video || recording.audio}
@@ -1005,7 +1025,9 @@
                         </div>
 
                         <div class="column spaced centered">
-                            <label for="file_upload" >Upload your own transcript (in .srt only): </label>
+                            <label for="file_upload" >
+                                {$t('Upload your own transcript (in .srt only)')}:
+                            </label>
                             <div class="row centered spaced">
                                 <input style="width: 50%;" bind:value={transcript_files} bind:this={transcript_fileinput} name="transcirptfile_upload"type="file" id="transcriptfile_upload" accept=" .srt"
                                     on:change={async (e) => {
@@ -1023,7 +1045,7 @@
                                         }} 
                                 disabled={is_loading || !transcript_files || transcript_files.length===0}> 
                                     <img src="./logos/upload-svgrepo-com.svg" alt="Upload file" class="mini-icon">
-                                    Upload file
+                                    {$t('Upload file')}
                                 </button> 
                                 {#if recording.transcript_list && recording.transcript_list.length > 0}
                                     <button class="action-button centered row " on:click={async () => {
@@ -1050,10 +1072,12 @@
                 </div>
             </div>
             <div id="feedback-highlight-panel" class ="column spaced padded ">
-                <span style="font-weight: bold; text-decoration: underline; margin-left: 1rem;"> Step 2: Highlight feedback in the discussion's transcript.</span>
+                <span style="font-weight: bold; text-decoration: underline; margin-left: 1rem;"> 
+                    {$t("Step 2: Highlight feedback in the discussion's transcript.") }
+                </span>
                 <div class="centered" style="height: 100%; width: 100%;">
                     <div class="row centered spaced">
-                        <button class = "action-button" 
+                        <button class = "action-button centered column" 
                             disabled={!recording || !recording.transcript_list || is_loading}
                             on:click={async () => {
                                 if(feedback_list.length > 0) {
@@ -1073,7 +1097,7 @@
                                 let chunk3 = list.slice(2 * chunk_size, 3 * chunk_size);
                                 let chunk4 = list.slice(3 * chunk_size, list.length);
                                 let chunks=[chunk1, chunk2, chunk3, chunk4];
-                                load_status="Detecting feedback in transcript ...";
+                                load_status = $t("Detecting feedback in transcript");
                                 for(let i=0; i < chunks.length; i++) {
                                     let thing = await autoDetectFeedback(chunks[i]);
                                     feedback_list = feedback_list.concat(thing);
@@ -1089,7 +1113,7 @@
                                     feedback_list[j].excerpt_reference=excerpt;
                                 }
                                 feedback_list=feedback_list;
-                                load_status="Highlighting feedback ..."
+                                load_status=$t("Highlighting feedback");
                                 autoHighlightFeedback(feedback_list);
                                 await saveFeedbackList(feedback_list);
                                 await saveRecording(recording);
@@ -1103,9 +1127,9 @@
                             }}
                         > 
                             <img src="./logos/magnifying-glass-for-search-3-svgrepo-com.svg" alt="Auto-detect Feedback" class="logo">
-                            Auto-detect <br> Feedback
+                            {$t("Auto-detect Feedback")}
                         </button>
-                        <button class="action-button"
+                        <button class="action-button centered column"
                             disabled={!recording || !recording.transcript_list || is_loading}
                             on:click={async () => {
                                 let selection = addFeedback("positive");
@@ -1115,9 +1139,9 @@
                             }}
                         > 
                             <img src="./logos/highlight-green-svgrepo-com.svg" alt="Highlight Positive Feedback" class="logo">
-                            Highlight <br> Positive
+                            {$t("Highlight Positive")}
                         </button>
-                        <button class="action-button"
+                        <button class="action-button centered column"
                             disabled={!recording || !recording.transcript_list || is_loading}
                             on:click={async () => {
                                 let selection = addFeedback("critical");
@@ -1127,9 +1151,9 @@
                             }}
                         > 
                             <img src="./logos/highlight-red-svgrepo-com.svg" alt="Highlight Critical Feedback" class="logo">
-                            Highlight <br> Critical 
+                            {$t("Highlight Critical")}
                         </button>
-                        <button class="action-button"
+                        <button class="action-button centered column"
                             disabled={!recording || !recording.transcript_list || is_loading || feedback_list.length <= 0}
                             on:click={async () => {
                                 let selection = removeFeedback();
@@ -1139,9 +1163,9 @@
                             }}
                         > 
                             <img src="./logos/erase-svgrepo-com.svg" alt="De-highlight Feedback" class="logo">
-                            Remove <br> Feedback
+                            {$t("Remove Feedback")}
                         </button>
-                        <button class="action-button"
+                        <button class="action-button centered column"
                             disabled={!recording || !recording.transcript_list || is_loading || feedback_list.length <= 0}
                             on:click={async () => {
                                 removeAllFeedback();
@@ -1151,7 +1175,7 @@
                             }}
                         > 
                             <img src="./logos/delete-svgrepo-com.svg" alt="Delete all Feedback" class="logo">
-                            Remove all <br> Feedback
+                            {$t("Remove All Feedback")}
                         </button>
                     </div>
                 </div>
@@ -1175,7 +1199,9 @@
             {/if}
         </div>
         <div id="feedback-details-area" class="bordered padded spaced" style="overflow-y:auto;">
-            <h3 style="font-weight: bold; text-decoration: underline;"> Discussion Transcript Details </h3>
+            <h3 style="font-weight: bold; text-decoration: underline;"> 
+                {$t("Discussion Transcript Details")}
+            </h3>
             {#if recording && recording.transcript_list}
                 {#if recording.transcript_list && recording.transcript_list.length > 0 &&  "speaker" in recording.transcript_list[0]} 
                     <strong> Number of participants: {Object.keys(recording.transcript_list.reduce((acc, cur) => {

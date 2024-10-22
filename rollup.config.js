@@ -5,6 +5,7 @@ import terser from '@rollup/plugin-terser';
 import resolve from '@rollup/plugin-node-resolve';
 import livereload from 'rollup-plugin-livereload';
 import css from 'rollup-plugin-css-only';
+import json from '@rollup/plugin-json';
 
 const production = !process.env.ROLLUP_WATCH;
 
@@ -35,9 +36,11 @@ export default {
 		sourcemap: true,
 		format: 'iife',
 		name: 'app',
-		file: 'public/build/bundle.js'
+		file: 'public/build/bundle.js',
+		inlineDynamicImports: true, //Add this line when importing json files (using import json from '@rollup/plugin-json')
 	},
 	plugins: [
+		json(),
 		svelte({
 			compilerOptions: {
 				// enable run-time checks when not in production
